@@ -292,15 +292,26 @@ Expected JSON output structure:
     });
 
     if (!response.ok) {
-      throw new Error(`Gemini API Error (status ${response.status})`);
+      const errBody = await response.json().catch(() => ({}));
+      const errMsg = errBody.error?.message || `Status ${response.status}`;
+      throw new Error(`Gemini API Error: ${errMsg}`);
     }
 
     const result = await response.json();
+    if (!result.candidates || result.candidates.length === 0) {
+      throw new Error("No candidates returned from Gemini");
+    }
     const textResponse = result.candidates[0].content.parts[0].text;
     
-    // Clean up markdown block wraps if present
-    const cleanJson = textResponse.replace(/^```json/, '').replace(/```$/, '').trim();
-    return JSON.parse(cleanJson);
+    // Robust JSON extraction
+    const start = textResponse.indexOf('{');
+    const end = textResponse.lastIndexOf('}');
+    if (start !== -1 && end !== -1) {
+      const jsonStr = textResponse.substring(start, end + 1);
+      return JSON.parse(jsonStr);
+    }
+    
+    throw new Error("No valid JSON structure found in Gemini response");
   }
 
   function runSimulatedScan(sample) {
