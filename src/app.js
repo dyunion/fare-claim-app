@@ -1,6 +1,7 @@
 // SmartFare Application Main Orchestrator
 
 import { SUPABASE_CONFIG } from './config.js';
+import { MOCK_CLAIMS } from './data/samples.js';
 import { initLogin } from './components/login.js';
 import { initDashboard } from './components/dashboard.js';
 import { initScanner } from './components/scanner.js';
@@ -15,6 +16,11 @@ let state = {
   currentView: 'dashboard', // 'dashboard', 'new-claim', 'edit-claim', 'history'
   activeClaim: null // Claim details to populate in form
 };
+
+// Check if we are in local offline/demo mock mode
+function isMock() {
+  return !SUPABASE_CONFIG.URL || SUPABASE_CONFIG.URL.includes("your-project-ref") || (state.token && state.token.startsWith('mock-'));
+}
 
 // Map DB models to application camelCase properties and vice versa
 function mapClaimFromDb(dbClaim) {
@@ -183,6 +189,19 @@ async function apiFetch(path, options = {}) {
 }
 
 async function apiFetchClaims() {
+  if (isMock()) {
+    // Load from localStorage or default MOCK_CLAIMS
+    let localClaims = localStorage.getItem('smartfare_mock_claims');
+    if (!localClaims) {
+      localStorage.setItem('smartfare_mock_claims', JSON.stringify(MOCK_CLAIMS));
+      state.claims = JSON.parse(JSON.stringify(MOCK_CLAIMS));
+    } else {
+      state.claims = JSON.parse(localClaims);
+    }
+    renderActiveView();
+    return;
+  }
+
   try {
     const dbClaims = await apiFetch('/rest/v1/claims');
     state.claims = dbClaims.map(mapClaimFromDb);
@@ -340,6 +359,15 @@ async function handleApproveClaim(id) {
     showToast("承認権限がありません", "danger");
     return;
   }
+  
+  if (isMock()) {
+    state.claims = state.claims.map(c => c.id === id ? { ...c, status: 'approved' } : c);
+    localStorage.setItem('smartfare_mock_claims', JSON.stringify(state.claims));
+    showToast('【デモ】申請を承認しました！', 'success');
+    renderActiveView();
+    return;
+  }
+
   try {
     await apiFetch(`/rest/v1/claims?id=eq.${id}`, {
       method: 'PATCH',
@@ -358,6 +386,20 @@ async function handleApproveClaim(id) {
 
 async function handleSaveClaim(savedClaim) {
   try {
+    if (isMock()) {
+      if (!savedClaim.id) {
+        savedClaim.id = `claim-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        state.claims.push(savedClaim);
+      } else {
+        state.claims = state.claims.map(c => c.id === savedClaim.id ? savedClaim : c);
+      }
+      localStorage.setItem('smartfare_mock_claims', JSON.stringify(state.claims));
+      showToast(savedClaim.id ? '【デモ】申請内容を更新しました' : '【デモ】新規申請を登録しました', 'success');
+      state.activeClaim = null;
+      switchView('dashboard');
+      return;
+    }
+
     if (!savedClaim.id) {
       // Assign a new ID (UUID format style or random timestamp style)
       savedClaim.id = `claim-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -394,6 +436,14 @@ async function handleSaveClaim(savedClaim) {
 
 async function handleDeleteClaim(id) {
   if (confirm('この精算申請を削除してもよろしいですか？')) {
+    if (isMock()) {
+      state.claims = state.claims.filter(c => c.id !== id);
+      localStorage.setItem('smartfare_mock_claims', JSON.stringify(state.claims));
+      showToast('【デモ】精算申請を削除しました', 'info');
+      renderActiveView();
+      return;
+    }
+
     try {
       await apiFetch(`/rest/v1/claims?id=eq.${id}`, {
         method: 'DELETE'
@@ -412,6 +462,44 @@ async function renderUsersView(wrapperId) {
     switchView('dashboard');
     return;
   }
+
+  if (isMock()) {
+    const defaultMockUsers = [
+      { username: 'admin', name: '管理者', role: 'admin' },
+      { username: 'yrai', name: 'Y Rai', role: 'user' },
+      { username: 'sato', name: '佐藤 健二', role: 'user' },
+      { username: 'suzuki', name: '鈴木 美咲', role: 'user' }
+    ];
+    let localUsers = localStorage.getItem('smartfare_mock_users');
+    if (!localUsers) {
+      localStorage.setItem('smartfare_mock_users', JSON.stringify(defaultMockUsers));
+      localUsers = JSON.stringify(defaultMockUsers);
+    }
+    const users = JSON.parse(localUsers);
+    
+    initUsers(
+      wrapperId,
+      users,
+      async (newUser) => {
+        const uList = JSON.parse(localStorage.getItem('smartfare_mock_users') || JSON.stringify(defaultMockUsers));
+        if (uList.some(u => u.username === newUser.username)) {
+          showToast('このユーザーIDは既に登録されています。', 'danger');
+          return;
+        }
+        uList.push({
+          username: newUser.username,
+          name: newUser.name,
+          role: newUser.role
+        });
+        localStorage.setItem('smartfare_mock_users', JSON.stringify(uList));
+        showToast('【デモ】新規ユーザーを登録しました', 'success');
+        renderUsersView(wrapperId);
+      },
+      showToast
+    );
+    return;
+  }
+
   try {
     const users = await apiFetch('/rest/v1/profiles');
     initUsers(

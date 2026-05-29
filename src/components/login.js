@@ -65,6 +65,35 @@ export function initLogin(containerId, onLoginSuccess) {
     submitBtn.disabled = true;
     submitBtn.textContent = '認証中...';
 
+    // Local demo/mock mode check when Supabase is not configured yet
+    const isMockMode = !SUPABASE_CONFIG.URL || SUPABASE_CONFIG.URL.includes("your-project-ref");
+    if (isMockMode) {
+      setTimeout(() => {
+        const u = usernameInput.trim().toLowerCase();
+        const p = passwordInput;
+        if (u === 'admin' && p === 'admin123') {
+          onLoginSuccess('mock-admin-token', {
+            id: 'mock-admin-uuid',
+            username: 'admin',
+            name: '管理者',
+            role: 'admin'
+          });
+        } else if (u === 'yrai' && p === 'yrai123') {
+          onLoginSuccess('mock-yrai-token', {
+            id: 'mock-yrai-uuid',
+            username: 'yrai',
+            name: 'Y Rai',
+            role: 'user'
+          });
+        } else {
+          showError('【デモモード】ユーザーIDまたはパスワードが正しくありません（一般: yrai / yrai123、管理者: admin / admin123）');
+        }
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'ログイン';
+      }, 500);
+      return;
+    }
+
     try {
       const email = `${usernameInput.trim().toLowerCase()}@smartfare.local`;
       
@@ -94,7 +123,7 @@ export function initLogin(containerId, onLoginSuccess) {
         showError(data.error_description || 'ログインIDまたはパスワードが正しくありません');
       }
     } catch (err) {
-      showError('データベースへの接続に失敗しました。Project APIキーを確認してください。');
+      showError('データベースへの接続に失敗しました。Project APIキーを確認してください。未設定の場合は yrai / yrai123 または admin / admin123 でデモログインできます。');
       console.error(err);
     } finally {
       submitBtn.disabled = false;
