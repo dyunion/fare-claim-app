@@ -555,12 +555,14 @@ function renderHistoryView(wrapperId) {
           <select id="history-filter-category" class="form-control" style="padding: 10px 14px;">
             <option value="all">すべての交通区分</option>
             <option value="jr">JR線</option>
-            <option value="subway">地下鉄・私鉄</option>
+            <option value="subway">地下鉄</option>
+            <option value="private_rail">私鉄</option>
             <option value="shinkansen">新幹線・特急</option>
-            <option value="highway">高速道路</option>
-            <option value="flight">飛行機</option>
             <option value="bus">バス</option>
             <option value="taxi">タクシー</option>
+            <option value="car">自家用車・社用車</option>
+            <option value="highway">高速道路</option>
+            <option value="flight">飛行機</option>
           </select>
           
           <select id="history-filter-status" class="form-control" style="padding: 10px 14px;">
@@ -764,12 +766,14 @@ function renderHistoryView(wrapperId) {
 function getCategoryLabel(cat) {
   const map = {
     jr: 'JR線',
+    subway: '地下鉄',
+    private_rail: '私鉄',
     shinkansen: '新幹線・特急',
-    subway: '地下鉄・私鉄',
     highway: '高速道路',
     flight: '飛行機',
     bus: 'バス',
-    taxi: 'タクシー'
+    taxi: 'タクシー',
+    car: '自家用車・社用車'
   };
   return map[cat] || cat;
 }

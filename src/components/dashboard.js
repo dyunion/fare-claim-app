@@ -2,12 +2,14 @@
 
 const TRANSIT_METRIC_CONFIG = {
   jr: { label: 'JR線', dotColor: '#10b981' },
+  subway: { label: '地下鉄', dotColor: '#e11d48' },
+  private_rail: { label: '私鉄', dotColor: '#db2777' },
   shinkansen: { label: '新幹線', dotColor: '#2563eb' },
-  subway: { label: '地下鉄・私鉄', dotColor: '#e11d48' },
-  highway: { label: '高速道路', dotColor: '#059669' },
-  flight: { label: '飛行機', dotColor: '#7c3aed' },
   bus: { label: 'バス', dotColor: '#d97706' },
-  taxi: { label: 'タクシー', dotColor: '#0891b2' }
+  taxi: { label: 'タクシー', dotColor: '#0891b2' },
+  car: { label: '車（自家用/社用）', dotColor: '#64748b' },
+  highway: { label: '高速道路', dotColor: '#059669' },
+  flight: { label: '飛行機', dotColor: '#7c3aed' }
 };
 
 export function initDashboard(containerId, claims, onViewChange, onEditClaim, onApproveClaim, showToast, onViewReceipt, isAdmin) {

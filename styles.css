@@ -28,8 +28,10 @@
   
   /* Transport Colors */
   --color-jr: #10b981; /* Green */
-  --color-shinkansen: #2563eb; /* Blue */
   --color-subway: #e11d48; /* Crimson */
+  --color-private-rail: #db2777; /* Magenta */
+  --color-shinkansen: #2563eb; /* Blue */
+  --color-car: #64748b; /* Slate Gray */
   --color-highway: #059669; /* Deep Emerald */
   --color-flight: #7c3aed; /* Violet */
   --color-bus: #d97706; /* Amber */
@@ -618,12 +620,14 @@ body {
 }
 
 .transit-type-tag.jr { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.25); }
-.transit-type-tag.shinkansen { background: rgba(37, 99, 235, 0.15); color: #60a5fa; border: 1px solid rgba(37, 99, 235, 0.25); }
 .transit-type-tag.subway { background: rgba(225, 29, 72, 0.15); color: #fb7185; border: 1px solid rgba(225, 29, 72, 0.25); }
+.transit-type-tag.private_rail { background: rgba(219, 39, 119, 0.15); color: #f472b6; border: 1px solid rgba(219, 39, 119, 0.25); }
+.transit-type-tag.shinkansen { background: rgba(37, 99, 235, 0.15); color: #60a5fa; border: 1px solid rgba(37, 99, 235, 0.25); }
 .transit-type-tag.highway { background: rgba(5, 150, 105, 0.15); color: #34d399; border: 1px solid rgba(5, 150, 105, 0.25); }
 .transit-type-tag.flight { background: rgba(124, 58, 237, 0.15); color: #c084fc; border: 1px solid rgba(124, 58, 237, 0.25); }
 .transit-type-tag.bus { background: rgba(217, 119, 6, 0.15); color: #fbbf24; border: 1px solid rgba(217, 119, 6, 0.25); }
 .transit-type-tag.taxi { background: rgba(8, 145, 178, 0.15); color: #22d3ee; border: 1px solid rgba(8, 145, 178, 0.25); }
+.transit-type-tag.car { background: rgba(100, 116, 139, 0.15); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.25); }
 
 /* OCR Upload & Scanner View */
 .claim-container {

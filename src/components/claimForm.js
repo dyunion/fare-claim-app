@@ -3,12 +3,14 @@
 // Supported transport modes
 const TRANSPORT_TYPES = [
   { value: 'jr', label: 'JR線', class: 'jr', icon: '🚆' },
-  { value: 'subway', label: '地下鉄・私鉄', class: 'subway', icon: '🚇' },
+  { value: 'subway', label: '地下鉄', class: 'subway', icon: '🚇' },
+  { value: 'private_rail', label: '私鉄', class: 'private_rail', icon: '🚃' },
   { value: 'shinkansen', label: '新幹線・特急', class: 'shinkansen', icon: '🚄' },
-  { value: 'highway', label: '高速道路・有料道路', class: 'highway', icon: '🛣️' },
-  { value: 'flight', label: '飛行機・LCC', class: 'flight', icon: '✈️' },
   { value: 'bus', label: '路線バス・高速バス', class: 'bus', icon: '🚌' },
-  { value: 'taxi', label: 'タクシー', class: 'taxi', icon: '🚕' }
+  { value: 'taxi', label: 'タクシー', class: 'taxi', icon: '🚕' },
+  { value: 'car', label: '自家用車・社用車', class: 'car', icon: '🚗' },
+  { value: 'highway', label: '高速道路・有料道路', class: 'highway', icon: '🛣️' },
+  { value: 'flight', label: '飛行機・LCC', class: 'flight', icon: '✈️' }
 ];
 
 const RECEIPT_REQUIRED_CATEGORIES = ['highway', 'shinkansen', 'flight', 'taxi'];
@@ -407,12 +409,14 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
 function getCategoryLabel(cat) {
   const map = {
     jr: 'JR線',
+    subway: '地下鉄',
+    private_rail: '私鉄',
     shinkansen: '新幹線・特急',
-    subway: '地下鉄・私鉄',
     highway: '高速道路',
     flight: '飛行機',
     bus: 'バス',
-    taxi: 'タクシー'
+    taxi: 'タクシー',
+    car: '自家用車・社用車'
   };
   return map[cat] || cat;
 }
