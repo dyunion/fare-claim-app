@@ -71,19 +71,24 @@ export function initLogin(containerId, onLoginSuccess) {
       setTimeout(() => {
         const u = usernameInput.trim().toLowerCase();
         const p = passwordInput;
-        if (u === 'admin' && p === 'admin123') {
-          onLoginSuccess('mock-admin-token', {
-            id: 'mock-admin-uuid',
-            username: 'admin',
-            name: '管理者',
-            role: 'admin'
-          });
-        } else if (u === 'yrai' && p === 'yrai123') {
-          onLoginSuccess('mock-yrai-token', {
-            id: 'mock-yrai-uuid',
-            username: 'yrai',
-            name: 'Y Rai',
-            role: 'user'
+        const defaultMockUsers = [
+          { username: 'admin', name: '管理者', role: 'admin', password: 'admin123' },
+          { username: 'yrai', name: 'Y Rai', role: 'user', password: 'yrai123' },
+          { username: 'sato', name: '佐藤 健二', role: 'user', password: 'sato123' },
+          { username: 'suzuki', name: '鈴木 美咲', role: 'user', password: 'suzuki123' }
+        ];
+        const storedUsers = JSON.parse(localStorage.getItem('smartfare_mock_users') || 'null');
+        const mockUsers = Array.isArray(storedUsers) ? storedUsers : defaultMockUsers;
+        const fallbackPasswords = Object.fromEntries(defaultMockUsers.map(user => [user.username, user.password]));
+        const matchedUser = mockUsers.find(user => user.username === u);
+        const expectedPassword = matchedUser?.password || fallbackPasswords[u];
+
+        if (matchedUser && p === expectedPassword) {
+          onLoginSuccess(`mock-${matchedUser.username}-token`, {
+            id: matchedUser.id || `mock-${matchedUser.username}-uuid`,
+            username: matchedUser.username,
+            name: matchedUser.name,
+            role: matchedUser.role
           });
         } else {
           showError('【デモモード】ユーザーIDまたはパスワードが正しくありません（一般: yrai / yrai123、管理者: admin / admin123）');

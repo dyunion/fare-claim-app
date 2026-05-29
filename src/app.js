@@ -1,12 +1,12 @@
 // SmartFare Application Main Orchestrator
 
-import { SUPABASE_CONFIG } from './config.js?v=8';
-import { MOCK_CLAIMS } from './data/samples.js?v=8';
-import { initLogin } from './components/login.js?v=8';
-import { initDashboard } from './components/dashboard.js?v=8';
-import { initScanner } from './components/scanner.js?v=8';
-import { initClaimForm } from './components/claimForm.js?v=8';
-import { initUsers } from './components/users.js?v=8';
+import { SUPABASE_CONFIG } from './config.js?v=9';
+import { MOCK_CLAIMS } from './data/samples.js?v=9';
+import { initLogin } from './components/login.js?v=9';
+import { initDashboard } from './components/dashboard.js?v=9';
+import { initScanner } from './components/scanner.js?v=9';
+import { initClaimForm } from './components/claimForm.js?v=9';
+import { initUsers } from './components/users.js?v=9';
 
 // Application State
 let state = {
@@ -474,10 +474,10 @@ async function renderUsersView(wrapperId) {
 
   if (isMock()) {
     const defaultMockUsers = [
-      { username: 'admin', name: '管理者', role: 'admin' },
-      { username: 'yrai', name: 'Y Rai', role: 'user' },
-      { username: 'sato', name: '佐藤 健二', role: 'user' },
-      { username: 'suzuki', name: '鈴木 美咲', role: 'user' }
+      { username: 'admin', name: '管理者', role: 'admin', password: 'admin123' },
+      { username: 'yrai', name: 'Y Rai', role: 'user', password: 'yrai123' },
+      { username: 'sato', name: '佐藤 健二', role: 'user', password: 'sato123' },
+      { username: 'suzuki', name: '鈴木 美咲', role: 'user', password: 'suzuki123' }
     ];
     let localUsers = localStorage.getItem('smartfare_mock_users');
     if (!localUsers) {
@@ -498,7 +498,8 @@ async function renderUsersView(wrapperId) {
         uList.push({
           username: newUser.username,
           name: newUser.name,
-          role: newUser.role
+          role: newUser.role,
+          password: newUser.password
         });
         localStorage.setItem('smartfare_mock_users', JSON.stringify(uList));
         showToast('【デモ】新規ユーザーを登録しました', 'success');
@@ -516,6 +517,9 @@ async function renderUsersView(wrapperId) {
         if (idx !== -1) {
           uList[idx].name = payload.name;
           uList[idx].role = payload.role;
+          if (payload.password) {
+            uList[idx].password = payload.password;
+          }
           localStorage.setItem('smartfare_mock_users', JSON.stringify(uList));
           showToast('【デモ】ユーザー情報を修正しました。', 'success');
           renderUsersView(wrapperId);
@@ -951,6 +955,10 @@ async function apiDeleteUser(userId) {
 // Update user details (and optionally password) by Admin via RPC
 async function apiUpdateUser(userId, payload) {
   try {
+    if (!['admin', 'user'].includes(payload.role)) {
+      throw new Error('権限には admin または user を指定してください。');
+    }
+
     // 1. Update Profile (Name & Role)
     await apiFetch('/rest/v1/rpc/update_user_profile_by_admin', {
       method: 'POST',
