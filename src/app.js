@@ -1,12 +1,12 @@
 // SmartFare Application Main Orchestrator
 
-import { SUPABASE_CONFIG } from './config.js?v=7';
-import { MOCK_CLAIMS } from './data/samples.js?v=7';
-import { initLogin } from './components/login.js?v=7';
-import { initDashboard } from './components/dashboard.js?v=7';
-import { initScanner } from './components/scanner.js?v=7';
-import { initClaimForm } from './components/claimForm.js?v=7';
-import { initUsers } from './components/users.js?v=7';
+import { SUPABASE_CONFIG } from './config.js?v=8';
+import { MOCK_CLAIMS } from './data/samples.js?v=8';
+import { initLogin } from './components/login.js?v=8';
+import { initDashboard } from './components/dashboard.js?v=8';
+import { initScanner } from './components/scanner.js?v=8';
+import { initClaimForm } from './components/claimForm.js?v=8';
+import { initUsers } from './components/users.js?v=8';
 
 // Application State
 let state = {
@@ -509,7 +509,26 @@ async function renderUsersView(wrapperId) {
       async (newFuelSettings) => {
         await apiSaveFuelSettings(newFuelSettings);
         renderUsersView(wrapperId);
-      }
+      },
+      async (username, payload) => {
+        const uList = JSON.parse(localStorage.getItem('smartfare_mock_users') || JSON.stringify(defaultMockUsers));
+        const idx = uList.findIndex(u => u.username === username);
+        if (idx !== -1) {
+          uList[idx].name = payload.name;
+          uList[idx].role = payload.role;
+          localStorage.setItem('smartfare_mock_users', JSON.stringify(uList));
+          showToast('【デモ】ユーザー情報を修正しました。', 'success');
+          renderUsersView(wrapperId);
+        }
+      },
+      async (username) => {
+        const uList = JSON.parse(localStorage.getItem('smartfare_mock_users') || JSON.stringify(defaultMockUsers));
+        const filtered = uList.filter(u => u.username !== username);
+        localStorage.setItem('smartfare_mock_users', JSON.stringify(filtered));
+        showToast('【デモ】ユーザーを削除しました。', 'success');
+        renderUsersView(wrapperId);
+      },
+      state.currentUser.username
     );
     return;
   }
@@ -547,7 +566,16 @@ async function renderUsersView(wrapperId) {
       async (newFuelSettings) => {
         await apiSaveFuelSettings(newFuelSettings);
         renderUsersView(wrapperId);
-      }
+      },
+      async (userId, payload) => {
+        await apiUpdateUser(userId, payload);
+        renderUsersView(wrapperId);
+      },
+      async (userId) => {
+        await apiDeleteUser(userId);
+        renderUsersView(wrapperId);
+      },
+      state.currentUser.id
     );
   } catch (err) {
     console.error("Failed to load users:", err);
@@ -897,5 +925,63 @@ async function apiSaveFuelSettings(newSettings) {
   } catch (err) {
     console.error("Failed to save fuel settings:", err);
     showToast(`設定の保存に失敗しました: ${err.message}`, "danger");
+  }
+}
+
+// Delete user account by Admin via RPC
+async function apiDeleteUser(userId) {
+  try {
+    await apiFetch('/rest/v1/rpc/delete_user_by_admin', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        target_user_id: userId
+      })
+    });
+    showToast("アカウントを削除しました", "success");
+  } catch (err) {
+    console.error("Failed to delete user:", err);
+    showToast(`削除に失敗しました: ${err.message}`, "danger");
+    throw err;
+  }
+}
+
+// Update user details (and optionally password) by Admin via RPC
+async function apiUpdateUser(userId, payload) {
+  try {
+    // 1. Update Profile (Name & Role)
+    await apiFetch('/rest/v1/rpc/update_user_profile_by_admin', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        target_user_id: userId,
+        new_name: payload.name,
+        new_role: payload.role
+      })
+    });
+
+    // 2. If password update is requested, run password change RPC
+    if (payload.password) {
+      await apiFetch('/rest/v1/rpc/update_user_password_by_admin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          target_user_id: userId,
+          new_password: payload.password
+        })
+      });
+    }
+
+    showToast("ユーザー情報を変更しました", "success");
+  } catch (err) {
+    console.error("Failed to update user:", err);
+    showToast(`更新に失敗しました: ${err.message}`, "danger");
+    throw err;
   }
 }
