@@ -1,12 +1,12 @@
 // SmartFare Application Main Orchestrator
 
-import { SUPABASE_CONFIG } from './config.js?v=6';
-import { MOCK_CLAIMS } from './data/samples.js?v=6';
-import { initLogin } from './components/login.js?v=6';
-import { initDashboard } from './components/dashboard.js?v=6';
-import { initScanner } from './components/scanner.js?v=6';
-import { initClaimForm } from './components/claimForm.js?v=6';
-import { initUsers } from './components/users.js?v=6';
+import { SUPABASE_CONFIG } from './config.js?v=7';
+import { MOCK_CLAIMS } from './data/samples.js?v=7';
+import { initLogin } from './components/login.js?v=7';
+import { initDashboard } from './components/dashboard.js?v=7';
+import { initScanner } from './components/scanner.js?v=7';
+import { initClaimForm } from './components/claimForm.js?v=7';
+import { initUsers } from './components/users.js?v=7';
 
 // Application State
 let state = {
@@ -14,7 +14,13 @@ let state = {
   currentUser: JSON.parse(localStorage.getItem('smartfare_user')) || null,
   claims: [],
   currentView: 'dashboard', // 'dashboard', 'new-claim', 'edit-claim', 'history'
-  activeClaim: null // Claim details to populate in form
+  activeClaim: null, // Claim details to populate in form
+  fuelSettings: {
+    standard: 9.6,
+    compact: 12.4,
+    kei: 15.1,
+    bike: 30.0
+  }
 };
 
 // Check if we are in local offline/demo mock mode
@@ -92,8 +98,10 @@ function checkSession() {
       usersNav.style.display = state.currentUser.role === 'admin' ? 'flex' : 'none';
     }
     
-    // Load initial claims from Server
-    apiFetchClaims();
+    // Load settings first, then fetch claims
+    apiFetchSystemSettings().then(() => {
+      apiFetchClaims();
+    });
   } else {
     // Show login screen
     mainAppWrapper.style.display = 'none';
@@ -336,7 +344,8 @@ function renderActiveView() {
       editorClaim,
       (savedClaim) => handleSaveClaim(savedClaim),
       () => switchView('dashboard'),
-      showToast
+      showToast,
+      state.fuelSettings
     );
   } else if (state.currentView === 'history') {
     renderHistoryView(wrapperId);
@@ -495,7 +504,12 @@ async function renderUsersView(wrapperId) {
         showToast('【デモ】新規ユーザーを登録しました', 'success');
         renderUsersView(wrapperId);
       },
-      showToast
+      showToast,
+      state.fuelSettings,
+      async (newFuelSettings) => {
+        await apiSaveFuelSettings(newFuelSettings);
+        renderUsersView(wrapperId);
+      }
     );
     return;
   }
@@ -528,7 +542,12 @@ async function renderUsersView(wrapperId) {
           console.error("Save user failed:", err);
         }
       },
-      showToast
+      showToast,
+      state.fuelSettings,
+      async (newFuelSettings) => {
+        await apiSaveFuelSettings(newFuelSettings);
+        renderUsersView(wrapperId);
+      }
     );
   } catch (err) {
     console.error("Failed to load users:", err);
@@ -820,4 +839,63 @@ function showReceiptModal(receiptLegs, title) {
   modal.addEventListener('click', (e) => {
     if (e.target === modal) modal.remove();
   });
+}
+
+// Fetch system settings from Database or localStorage
+async function apiFetchSystemSettings() {
+  if (isMock()) {
+    const localSettings = localStorage.getItem('smartfare_system_settings');
+    if (localSettings) {
+      try {
+        const parsed = JSON.parse(localSettings);
+        if (parsed.fuel_efficiency) {
+          state.fuelSettings = parsed.fuel_efficiency;
+        }
+      } catch (e) {
+        console.error("Local settings parse error:", e);
+      }
+    }
+    return;
+  }
+
+  try {
+    const settings = await apiFetch('/rest/v1/system_settings');
+    const fuelEff = settings.find(s => s.key === 'fuel_efficiency');
+    if (fuelEff && fuelEff.value) {
+      state.fuelSettings = fuelEff.value;
+    }
+  } catch (err) {
+    console.error("System settings loading failed:", err);
+  }
+}
+
+// Save custom fuel settings to Database or localStorage
+async function apiSaveFuelSettings(newSettings) {
+  if (isMock()) {
+    const settingsObj = { fuel_efficiency: newSettings };
+    localStorage.setItem('smartfare_system_settings', JSON.stringify(settingsObj));
+    state.fuelSettings = newSettings;
+    showToast("燃費設定をローカル保存しました（デモモード）", "success");
+    return;
+  }
+
+  try {
+    await apiFetch('/rest/v1/system_settings', {
+      method: 'POST',
+      headers: {
+        'Prefer': 'resolution=merge-duplicates',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        key: 'fuel_efficiency',
+        value: newSettings,
+        updated_at: new Date().toISOString()
+      })
+    });
+    state.fuelSettings = newSettings;
+    showToast("車両燃費基準値を変更しました", "success");
+  } catch (err) {
+    console.error("Failed to save fuel settings:", err);
+    showToast(`設定の保存に失敗しました: ${err.message}`, "danger");
+  }
 }

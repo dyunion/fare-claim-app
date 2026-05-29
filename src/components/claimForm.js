@@ -16,7 +16,7 @@ const TRANSPORT_TYPES = [
 
 const RECEIPT_REQUIRED_CATEGORIES = ['highway', 'shinkansen', 'flight', 'taxi', 'rental_car'];
 
-export function initClaimForm(containerId, initialData, onSave, onCancel, showToast) {
+export function initClaimForm(containerId, initialData, onSave, onCancel, showToast, fuelSettings) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
@@ -210,10 +210,10 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
             <div style="display: flex; align-items: center; gap: 6px;">
               <span style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">車種/燃費:</span>
               <select class="form-control leg-fuel-type-select" style="width: 140px; padding: 4px 8px; font-size: 12px;">
-                <option value="standard" ${leg.fuelEfficiencyType === 'standard' ? 'selected' : ''}>普通 (9.6 km/L)</option>
-                <option value="compact" ${leg.fuelEfficiencyType === 'compact' ? 'selected' : ''}>小型 (12.4 km/L)</option>
-                <option value="kei" ${leg.fuelEfficiencyType === 'kei' ? 'selected' : ''}>軽 (15.1 km/L)</option>
-                <option value="bike" ${leg.fuelEfficiencyType === 'bike' ? 'selected' : ''}>二輪 (30.0 km/L)</option>
+                <option value="standard" ${leg.fuelEfficiencyType === 'standard' ? 'selected' : ''}>普通 (${fuelSettings ? fuelSettings.standard : 9.6} km/L)</option>
+                <option value="compact" ${leg.fuelEfficiencyType === 'compact' ? 'selected' : ''}>小型 (${fuelSettings ? fuelSettings.compact : 12.4} km/L)</option>
+                <option value="kei" ${leg.fuelEfficiencyType === 'kei' ? 'selected' : ''}>軽 (${fuelSettings ? fuelSettings.kei : 15.1} km/L)</option>
+                <option value="bike" ${leg.fuelEfficiencyType === 'bike' ? 'selected' : ''}>二輪 (${fuelSettings ? fuelSettings.bike : 30.0} km/L)</option>
                 <option value="custom" ${leg.fuelEfficiencyType === 'custom' ? 'selected' : ''}>カスタム</option>
               </select>
             </div>
@@ -297,19 +297,24 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
           leg.distance = parseFloat(distInput.value) || 0;
           leg.fuelEfficiencyType = fuelTypeSelect.value;
           
+          const standardEff = fuelSettings ? fuelSettings.standard : 9.6;
+          const compactEff = fuelSettings ? fuelSettings.compact : 12.4;
+          const keiEff = fuelSettings ? fuelSettings.kei : 15.1;
+          const bikeEff = fuelSettings ? fuelSettings.bike : 30.0;
+
           if (leg.fuelEfficiencyType === 'custom') {
-            leg.fuelEfficiency = parseFloat(fuelInput.value) || 9.6;
+            leg.fuelEfficiency = parseFloat(fuelInput.value) || standardEff;
           } else {
-            if (leg.fuelEfficiencyType === 'standard') leg.fuelEfficiency = 9.6;
-            else if (leg.fuelEfficiencyType === 'compact') leg.fuelEfficiency = 12.4;
-            else if (leg.fuelEfficiencyType === 'kei') leg.fuelEfficiency = 15.1;
-            else if (leg.fuelEfficiencyType === 'bike') leg.fuelEfficiency = 30.0;
+            if (leg.fuelEfficiencyType === 'standard') leg.fuelEfficiency = standardEff;
+            else if (leg.fuelEfficiencyType === 'compact') leg.fuelEfficiency = compactEff;
+            else if (leg.fuelEfficiencyType === 'kei') leg.fuelEfficiency = keiEff;
+            else if (leg.fuelEfficiencyType === 'bike') leg.fuelEfficiency = bikeEff;
           }
           
           leg.gasPrice = parseFloat(gasPriceInput.value) !== undefined ? parseFloat(gasPriceInput.value) : 160;
           leg.parkingFee = parseInt(parkingInput.value) || 0;
 
-          const { gasCost, amount } = calculateCarCost(leg);
+          const { gasCost, amount } = calculateCarCost(leg, fuelSettings);
           
           amountInput.value = amount || '';
           if (gasPreview) {
@@ -334,7 +339,7 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
           customFuelWrapper.style.display = isCustom ? 'flex' : 'none';
           if (isCustom) {
             fuelInput.setAttribute('required', 'true');
-            if (!fuelInput.value) fuelInput.value = '9.6';
+            if (!fuelInput.value) fuelInput.value = (fuelSettings ? fuelSettings.standard : '9.6');
           } else {
             fuelInput.removeAttribute('required');
           }
@@ -344,7 +349,7 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
         fuelInput.addEventListener('input', updateCarCalculation);
 
         // Run initial calculation to update preview on render
-        const { gasCost } = calculateCarCost(leg);
+        const { gasCost } = calculateCarCost(leg, fuelSettings);
         if (gasPreview) {
           gasPreview.textContent = `¥${gasCost.toLocaleString()}`;
         }
@@ -356,10 +361,10 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
         if (leg.type === 'private_car' || leg.type === 'rental_car') {
           leg.distance = leg.distance || 0;
           leg.fuelEfficiencyType = leg.fuelEfficiencyType || 'standard';
-          leg.fuelEfficiency = leg.fuelEfficiency || 9.6;
+          leg.fuelEfficiency = leg.fuelEfficiency || (fuelSettings ? fuelSettings.standard : 9.6);
           leg.gasPrice = leg.gasPrice || 160;
           leg.parkingFee = leg.parkingFee || 0;
-          calculateCarCost(leg);
+          calculateCarCost(leg, fuelSettings);
         }
         renderLegs();
       });
@@ -569,14 +574,19 @@ function getCategoryLabel(cat) {
 }
 
 // Car cost calculation helper (Math.ceil for 1 yen rounding up)
-function calculateCarCost(leg) {
+function calculateCarCost(leg, fuelSettings) {
   const distance = parseFloat(leg.distance) || 0;
-  let efficiency = 9.6;
-  if (leg.fuelEfficiencyType === 'standard') efficiency = 9.6;
-  else if (leg.fuelEfficiencyType === 'compact') efficiency = 12.4;
-  else if (leg.fuelEfficiencyType === 'kei') efficiency = 15.1;
-  else if (leg.fuelEfficiencyType === 'bike') efficiency = 30.0;
-  else if (leg.fuelEfficiencyType === 'custom') efficiency = parseFloat(leg.fuelEfficiency) || 9.6;
+  const standardEff = fuelSettings ? fuelSettings.standard : 9.6;
+  const compactEff = fuelSettings ? fuelSettings.compact : 12.4;
+  const keiEff = fuelSettings ? fuelSettings.kei : 15.1;
+  const bikeEff = fuelSettings ? fuelSettings.bike : 30.0;
+
+  let efficiency = standardEff;
+  if (leg.fuelEfficiencyType === 'standard') efficiency = standardEff;
+  else if (leg.fuelEfficiencyType === 'compact') efficiency = compactEff;
+  else if (leg.fuelEfficiencyType === 'kei') efficiency = keiEff;
+  else if (leg.fuelEfficiencyType === 'bike') efficiency = bikeEff;
+  else if (leg.fuelEfficiencyType === 'custom') efficiency = parseFloat(leg.fuelEfficiency) || standardEff;
   
   const gasPrice = parseFloat(leg.gasPrice) !== undefined ? parseFloat(leg.gasPrice) : 160;
   const parkingFee = parseInt(leg.parkingFee) || 0;

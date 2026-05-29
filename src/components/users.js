@@ -1,6 +1,6 @@
 // SmartFare User Management Component (Admin Only)
 
-export function initUsers(containerId, users, onAddUser, showToast) {
+export function initUsers(containerId, users, onAddUser, showToast, fuelSettings, onSaveFuelSettings) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
@@ -47,10 +47,84 @@ export function initUsers(containerId, users, onAddUser, showToast) {
           </table>
         </div>
       </div>
+
+      <!-- 車両燃費基準値の設定 (管理者専用) -->
+      <div class="glass-card" style="margin-top: 24px;">
+        <div class="form-header" style="border: none; margin-bottom: 20px;">
+          <h3>🚗 車両燃費基準値の設定</h3>
+        </div>
+
+        <p class="text-secondary" style="font-size: 13px; line-height: 1.5; margin-bottom: 16px;">
+          国基準の変更や燃料効率の改定に合わせて、自動計算用の基準燃費（km/L）を設定します。<br>
+          ※設定変更後、新しく作成する申請および編集する申請に対して適用されます。
+        </p>
+
+        <form id="fuel-settings-form" style="display: flex; flex-direction: column; gap: 16px;" onsubmit="return false;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <div class="form-group">
+              <label for="fuel-standard">普通車 燃費</label>
+              <input type="number" id="fuel-standard" class="form-control" value="${fuelSettings ? fuelSettings.standard : 9.6}" step="any" min="0.1" required style="padding: 10px 14px;">
+              <span style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">初期値: 9.6 km/L</span>
+            </div>
+            
+            <div class="form-group">
+              <label for="fuel-compact">小型車 燃費</label>
+              <input type="number" id="fuel-compact" class="form-control" value="${fuelSettings ? fuelSettings.compact : 12.4}" step="any" min="0.1" required style="padding: 10px 14px;">
+              <span style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">初期値: 12.4 km/L</span>
+            </div>
+
+            <div class="form-group">
+              <label for="fuel-kei">軽自動車 燃費</label>
+              <input type="number" id="fuel-kei" class="form-control" value="${fuelSettings ? fuelSettings.kei : 15.1}" step="any" min="0.1" required style="padding: 10px 14px;">
+              <span style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">初期値: 15.1 km/L</span>
+            </div>
+
+            <div class="form-group">
+              <label for="fuel-bike">二輪車 (バイク) 燃費</label>
+              <input type="number" id="fuel-bike" class="form-control" value="${fuelSettings ? fuelSettings.bike : 30.0}" step="any" min="0.1" required style="padding: 10px 14px;">
+              <span style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">初期値: 30.0 km/L</span>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; margin-top: 10px; border-top: 1px solid var(--glass-border); padding-top: 16px;">
+            <button type="submit" id="save-fuel-settings-btn" class="btn btn-primary" style="padding: 10px 24px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              燃費設定を保存
+            </button>
+          </div>
+        </form>
+      </div>
     `;
 
     // Bind action listeners
     document.getElementById('add-user-modal-btn').addEventListener('click', () => showUserModal());
+
+    const fuelForm = document.getElementById('fuel-settings-form');
+    if (fuelForm) {
+      fuelForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const standard = parseFloat(document.getElementById('fuel-standard').value);
+        const compact = parseFloat(document.getElementById('fuel-compact').value);
+        const kei = parseFloat(document.getElementById('fuel-kei').value);
+        const bike = parseFloat(document.getElementById('fuel-bike').value);
+
+        if (isNaN(standard) || isNaN(compact) || isNaN(kei) || isNaN(bike) || standard <= 0 || compact <= 0 || kei <= 0 || bike <= 0) {
+          showToast('燃費には0より大きい正しい数値を指定してください', 'danger');
+          return;
+        }
+
+        const payload = {
+          standard,
+          compact,
+          kei,
+          bike
+        };
+
+        if (onSaveFuelSettings) {
+          onSaveFuelSettings(payload);
+        }
+      });
+    }
   }
 
   // Show Add Modal Overlay
