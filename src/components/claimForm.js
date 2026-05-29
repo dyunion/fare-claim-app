@@ -30,7 +30,7 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
     category: initialData?.category || 'subway',
     status: initialData?.status || 'pending',
     legs: initialData?.legs ? JSON.parse(JSON.stringify(initialData.legs)) : [
-      { id: 'leg-1', type: 'subway', from: '', to: '', amount: 0, remark: '', receiptImage: null }
+      { id: 'leg-1', type: 'subway', from: '', to: '', amount: 0, remark: '', receiptImage: null, distance: 0, fuelEfficiencyType: 'standard', fuelEfficiency: 9.6, gasPrice: 160, parkingFee: 0 }
     ]
   };
 
@@ -150,6 +150,16 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
       legEl.setAttribute('data-id', leg.id || `leg-${index}`);
 
       const requiresReceipt = RECEIPT_REQUIRED_CATEGORIES.includes(leg.type);
+      const isCar = leg.type === 'private_car' || leg.type === 'rental_car';
+
+      // Set default fuel config if not present
+      if (isCar) {
+        if (leg.distance === undefined) leg.distance = 0;
+        if (leg.fuelEfficiencyType === undefined) leg.fuelEfficiencyType = 'standard';
+        if (leg.fuelEfficiency === undefined) leg.fuelEfficiency = 9.6;
+        if (leg.gasPrice === undefined) leg.gasPrice = 160;
+        if (leg.parkingFee === undefined) leg.parkingFee = 0;
+      }
 
       legEl.innerHTML = `
         <div class="leg-number">${index + 1}</div>
@@ -177,7 +187,7 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
 
         <!-- Price -->
         <div>
-          <input type="number" class="form-control leg-amount-input" placeholder="金額 (円)" value="${leg.amount || ''}" min="0" style="padding: 8px 10px; font-size: 13px;" required>
+          <input type="number" class="form-control leg-amount-input" placeholder="金額 (円)" value="${leg.amount || ''}" min="0" style="padding: 8px 10px; font-size: 13px;" required ${isCar ? 'readonly style="background: rgba(255,255,255,0.05); color: var(--text-muted); cursor: not-allowed;"' : ''}>
         </div>
 
         <!-- Delete button -->
@@ -186,6 +196,60 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
           </button>
         </div>
+
+        <!-- Car Cost Calculation Panel (Only shown if private_car or rental_car is selected) -->
+        ${isCar ? `
+        <div class="car-calculation-panel" style="grid-column: span 6; margin-top: 6px; padding: 12px; border-radius: var(--border-radius-sm); background: rgba(255, 255, 255, 0.02); border: 1px dashed var(--glass-border); display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">距離 (往復):</span>
+              <input type="number" class="form-control leg-distance-input" placeholder="km" value="${leg.distance !== undefined ? leg.distance : ''}" style="width: 70px; padding: 4px 8px; font-size: 12px;" min="0" step="any" required>
+              <span style="font-size: 12px; color: var(--text-muted);">km</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">車種/燃費:</span>
+              <select class="form-control leg-fuel-type-select" style="width: 140px; padding: 4px 8px; font-size: 12px;">
+                <option value="standard" ${leg.fuelEfficiencyType === 'standard' ? 'selected' : ''}>普通 (9.6 km/L)</option>
+                <option value="compact" ${leg.fuelEfficiencyType === 'compact' ? 'selected' : ''}>小型 (12.4 km/L)</option>
+                <option value="kei" ${leg.fuelEfficiencyType === 'kei' ? 'selected' : ''}>軽 (15.1 km/L)</option>
+                <option value="bike" ${leg.fuelEfficiencyType === 'bike' ? 'selected' : ''}>二輪 (30.0 km/L)</option>
+                <option value="custom" ${leg.fuelEfficiencyType === 'custom' ? 'selected' : ''}>カスタム</option>
+              </select>
+            </div>
+
+            <div class="custom-fuel-efficiency-wrapper" style="display: ${leg.fuelEfficiencyType === 'custom' ? 'flex' : 'none'}; align-items: center; gap: 6px;">
+              <span style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">燃費値:</span>
+              <input type="number" class="form-control leg-fuel-input" placeholder="km/L" value="${leg.fuelEfficiency || ''}" style="width: 70px; padding: 4px 8px; font-size: 12px;" min="0.1" step="any" ${leg.fuelEfficiencyType === 'custom' ? 'required' : ''}>
+              <span style="font-size: 12px; color: var(--text-muted);">km/L</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">単価:</span>
+              <input type="number" class="form-control leg-gas-price-input" placeholder="円" value="${leg.gasPrice !== undefined ? leg.gasPrice : 160}" style="width: 70px; padding: 4px 8px; font-size: 12px;" min="0" required>
+              <span style="font-size: 12px; color: var(--text-muted);">円/L</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">駐車場代:</span>
+              <input type="number" class="form-control leg-parking-input" placeholder="円" value="${leg.parkingFee !== undefined ? leg.parkingFee : 0}" style="width: 80px; padding: 4px 8px; font-size: 12px;" min="0" required>
+              <span style="font-size: 12px; color: var(--text-muted);">円</span>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed rgba(255,255,255,0.05); padding-top: 6px; margin-top: 2px;">
+            <div class="leg-dist-warning" style="font-size: 11px; color: #f97316; font-weight: 600; display: ${leg.distance >= 300 ? 'block' : 'none'};">
+              💡 往復300km以上：日当支給対象
+            </div>
+            <div style="flex-grow: 1;"></div>
+            <div style="font-size: 11px; color: var(--text-secondary);">
+              ガソリン代: <span class="gas-cost-preview-label" style="font-weight: 600; color: var(--text-primary);">¥0</span>
+              <span class="parking-cost-preview-label" style="display: ${leg.parkingFee > 0 ? 'inline' : 'none'};"> + 駐車場代: <span style="font-weight: 600; color: var(--text-primary);">¥${parseInt(leg.parkingFee || 0).toLocaleString()}</span></span>
+              (1円未満切り上げ)
+            </div>
+          </div>
+        </div>
+        ` : ''}
 
         <!-- Sub row for Remarks/Memo & receipt image attachment -->
         <div style="grid-column: span 6; margin-top: 4px; padding-left: 50px; display: flex; gap: 12px; align-items: center;">
@@ -218,9 +282,85 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
         updateTotalDisplay();
       });
 
+      if (isCar) {
+        const distInput = legEl.querySelector('.leg-distance-input');
+        const fuelTypeSelect = legEl.querySelector('.leg-fuel-type-select');
+        const fuelInput = legEl.querySelector('.leg-fuel-input');
+        const customFuelWrapper = legEl.querySelector('.custom-fuel-efficiency-wrapper');
+        const gasPriceInput = legEl.querySelector('.leg-gas-price-input');
+        const parkingInput = legEl.querySelector('.leg-parking-input');
+        const distWarning = legEl.querySelector('.leg-dist-warning');
+        const gasPreview = legEl.querySelector('.gas-cost-preview-label');
+        const parkingPreview = legEl.querySelector('.parking-cost-preview-label');
+
+        const updateCarCalculation = () => {
+          leg.distance = parseFloat(distInput.value) || 0;
+          leg.fuelEfficiencyType = fuelTypeSelect.value;
+          
+          if (leg.fuelEfficiencyType === 'custom') {
+            leg.fuelEfficiency = parseFloat(fuelInput.value) || 9.6;
+          } else {
+            if (leg.fuelEfficiencyType === 'standard') leg.fuelEfficiency = 9.6;
+            else if (leg.fuelEfficiencyType === 'compact') leg.fuelEfficiency = 12.4;
+            else if (leg.fuelEfficiencyType === 'kei') leg.fuelEfficiency = 15.1;
+            else if (leg.fuelEfficiencyType === 'bike') leg.fuelEfficiency = 30.0;
+          }
+          
+          leg.gasPrice = parseFloat(gasPriceInput.value) !== undefined ? parseFloat(gasPriceInput.value) : 160;
+          leg.parkingFee = parseInt(parkingInput.value) || 0;
+
+          const { gasCost, amount } = calculateCarCost(leg);
+          
+          amountInput.value = amount || '';
+          if (gasPreview) {
+            gasPreview.textContent = `¥${gasCost.toLocaleString()}`;
+          }
+          if (parkingPreview) {
+            parkingPreview.style.display = leg.parkingFee > 0 ? 'inline' : 'none';
+            parkingPreview.innerHTML = ` + 駐車場代: <span style="font-weight: 600; color: var(--text-primary);">¥${leg.parkingFee.toLocaleString()}</span>`;
+          }
+          if (distWarning) {
+            distWarning.style.display = leg.distance >= 300 ? 'block' : 'none';
+          }
+          updateTotalDisplay();
+        };
+
+        distInput.addEventListener('input', updateCarCalculation);
+        gasPriceInput.addEventListener('input', updateCarCalculation);
+        parkingInput.addEventListener('input', updateCarCalculation);
+
+        fuelTypeSelect.addEventListener('change', (e) => {
+          const isCustom = e.target.value === 'custom';
+          customFuelWrapper.style.display = isCustom ? 'flex' : 'none';
+          if (isCustom) {
+            fuelInput.setAttribute('required', 'true');
+            if (!fuelInput.value) fuelInput.value = '9.6';
+          } else {
+            fuelInput.removeAttribute('required');
+          }
+          updateCarCalculation();
+        });
+
+        fuelInput.addEventListener('input', updateCarCalculation);
+
+        // Run initial calculation to update preview on render
+        const { gasCost } = calculateCarCost(leg);
+        if (gasPreview) {
+          gasPreview.textContent = `¥${gasCost.toLocaleString()}`;
+        }
+      }
+
       // Leg category changes: Re-render list to show/hide receipt requirement dynamically
       legEl.querySelector('.leg-type-select').addEventListener('change', (e) => {
         leg.type = e.target.value;
+        if (leg.type === 'private_car' || leg.type === 'rental_car') {
+          leg.distance = leg.distance || 0;
+          leg.fuelEfficiencyType = leg.fuelEfficiencyType || 'standard';
+          leg.fuelEfficiency = leg.fuelEfficiency || 9.6;
+          leg.gasPrice = leg.gasPrice || 160;
+          leg.parkingFee = leg.parkingFee || 0;
+          calculateCarCost(leg);
+        }
         renderLegs();
       });
 
@@ -298,7 +438,12 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
       to: '',
       amount: 0,
       remark: '',
-      receiptImage: null
+      receiptImage: null,
+      distance: 0,
+      fuelEfficiencyType: 'standard',
+      fuelEfficiency: 9.6,
+      gasPrice: 160,
+      parkingFee: 0
     });
     renderLegs();
     showToast('乗り換え区間を追加しました', 'info');
@@ -421,4 +566,26 @@ function getCategoryLabel(cat) {
     rental_car: 'レンタカー'
   };
   return map[cat] || cat;
+}
+
+// Car cost calculation helper (Math.ceil for 1 yen rounding up)
+function calculateCarCost(leg) {
+  const distance = parseFloat(leg.distance) || 0;
+  let efficiency = 9.6;
+  if (leg.fuelEfficiencyType === 'standard') efficiency = 9.6;
+  else if (leg.fuelEfficiencyType === 'compact') efficiency = 12.4;
+  else if (leg.fuelEfficiencyType === 'kei') efficiency = 15.1;
+  else if (leg.fuelEfficiencyType === 'bike') efficiency = 30.0;
+  else if (leg.fuelEfficiencyType === 'custom') efficiency = parseFloat(leg.fuelEfficiency) || 9.6;
+  
+  const gasPrice = parseFloat(leg.gasPrice) !== undefined ? parseFloat(leg.gasPrice) : 160;
+  const parkingFee = parseInt(leg.parkingFee) || 0;
+
+  let gasCost = 0;
+  if (distance > 0 && efficiency > 0) {
+    gasCost = Math.ceil((distance / efficiency) * gasPrice);
+  }
+  
+  leg.amount = gasCost + parkingFee;
+  return { gasCost, amount: leg.amount };
 }

@@ -1238,3 +1238,51 @@ body {
   from { opacity: 0; transform: translateY(-5px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Car Cost Calculation Panel Styles */
+.car-calculation-panel {
+  background: rgba(255, 255, 255, 0.02) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px dashed rgba(255, 255, 255, 0.1) !important;
+  border-radius: var(--border-radius-md) !important;
+  padding: 14px !important;
+  margin-top: 8px !important;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.car-calculation-panel input.form-control,
+.car-calculation-panel select.form-control {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: var(--text-primary) !important;
+  border-radius: var(--border-radius-sm) !important;
+  transition: all 0.2s ease;
+}
+
+.car-calculation-panel input.form-control:focus,
+.car-calculation-panel select.form-control:focus {
+  border-color: var(--accent-purple) !important;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.2) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.leg-dist-warning {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(249, 115, 22, 0.12);
+  border: 1px solid rgba(249, 115, 22, 0.25);
+  color: #fb923c !important;
+  padding: 3px 8px;
+  border-radius: var(--border-radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.6; }
+}
