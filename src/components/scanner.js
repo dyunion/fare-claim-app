@@ -289,11 +289,11 @@ Expected JSON output structure:
 {
   "date": "YYYY-MM-DD", // Extract the date if present. If not found or unclear, use "${today}"
   "title": "A short summary in Japanese of the travel purpose or route (e.g., '新宿〜六本木一丁目')",
-  "category": "jr | subway | private_rail | shinkansen | bus | taxi | car | highway | flight", // Choose the primary category
+  "category": "jr | subway | private_rail | shinkansen | bus | taxi | private_car | rental_car | highway | flight", // Choose the primary category
   "amount": 1230, // Total cost in Yen (integer)
   "legs": [ // List each step in the travel route
     {
-      "type": "jr | subway | private_rail | shinkansen | bus | taxi | car | highway | flight",
+      "type": "jr | subway | private_rail | shinkansen | bus | taxi | private_car | rental_car | highway | flight",
       "from": "Origin station name in Japanese (e.g. '新宿駅')",
       "to": "Destination station name in Japanese (e.g. '六本木一丁目駅')",
       "amount": 280, // Cost for this leg in Yen (integer)

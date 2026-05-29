@@ -8,12 +8,13 @@ const TRANSPORT_TYPES = [
   { value: 'shinkansen', label: '新幹線・特急', class: 'shinkansen', icon: '🚄' },
   { value: 'bus', label: '路線バス・高速バス', class: 'bus', icon: '🚌' },
   { value: 'taxi', label: 'タクシー', class: 'taxi', icon: '🚕' },
-  { value: 'car', label: '自家用車・社用車', class: 'car', icon: '🚗' },
+  { value: 'private_car', label: '自家用車', class: 'private_car', icon: '🚗' },
+  { value: 'rental_car', label: 'レンタカー', class: 'rental_car', icon: '🚙' },
   { value: 'highway', label: '高速道路・有料道路', class: 'highway', icon: '🛣️' },
   { value: 'flight', label: '飛行機・LCC', class: 'flight', icon: '✈️' }
 ];
 
-const RECEIPT_REQUIRED_CATEGORIES = ['highway', 'shinkansen', 'flight', 'taxi'];
+const RECEIPT_REQUIRED_CATEGORIES = ['highway', 'shinkansen', 'flight', 'taxi', 'rental_car'];
 
 export function initClaimForm(containerId, initialData, onSave, onCancel, showToast) {
   const container = document.getElementById(containerId);
@@ -416,7 +417,8 @@ function getCategoryLabel(cat) {
     flight: '飛行機',
     bus: 'バス',
     taxi: 'タクシー',
-    car: '自家用車・社用車'
+    private_car: '自家用車',
+    rental_car: 'レンタカー'
   };
   return map[cat] || cat;
 }

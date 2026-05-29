@@ -560,7 +560,8 @@ function renderHistoryView(wrapperId) {
             <option value="shinkansen">新幹線・特急</option>
             <option value="bus">バス</option>
             <option value="taxi">タクシー</option>
-            <option value="car">自家用車・社用車</option>
+            <option value="private_car">自家用車</option>
+            <option value="rental_car">レンタカー</option>
             <option value="highway">高速道路</option>
             <option value="flight">飛行機</option>
           </select>
@@ -773,7 +774,8 @@ function getCategoryLabel(cat) {
     flight: '飛行機',
     bus: 'バス',
     taxi: 'タクシー',
-    car: '自家用車・社用車'
+    private_car: '自家用車',
+    rental_car: 'レンタカー'
   };
   return map[cat] || cat;
 }

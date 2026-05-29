@@ -7,7 +7,8 @@ const TRANSIT_METRIC_CONFIG = {
   shinkansen: { label: '新幹線', dotColor: '#2563eb' },
   bus: { label: 'バス', dotColor: '#d97706' },
   taxi: { label: 'タクシー', dotColor: '#0891b2' },
-  car: { label: '車（自家用/社用）', dotColor: '#64748b' },
+  private_car: { label: '自家用車', dotColor: '#64748b' },
+  rental_car: { label: 'レンタカー', dotColor: '#4b5563' },
   highway: { label: '高速道路', dotColor: '#059669' },
   flight: { label: '飛行機', dotColor: '#7c3aed' }
 };
