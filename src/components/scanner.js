@@ -44,6 +44,17 @@ export function initScanner(containerId, onScanComplete, showToast) {
             `).join('')}
           </div>
         </div>
+
+        <!-- Skip / Manual Entry option -->
+        <div style="margin-top: 20px; border-top: 1px solid var(--glass-border); padding-top: 16px; text-align: center;">
+          <p class="text-secondary" style="font-size: 12px; margin-bottom: 10px; line-height: 1.4;">
+            領収書・検索結果がない場合や、手動で入力したい場合はこちらから作成できます
+          </p>
+          <button id="skip-scan-btn" class="btn btn-secondary" style="width: 100%; justify-content: center; padding: 10px 14px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"/></svg>
+            手動で新規申請を作成する
+          </button>
+        </div>
       </div>
 
       <!-- Right side: Preview screen with lasers & overlays -->
@@ -91,6 +102,14 @@ export function initScanner(containerId, onScanComplete, showToast) {
   const ocrContainer = document.getElementById('ocr-overlay-container');
   const scanBadge = document.getElementById('scan-status-badge');
   const logBox = document.getElementById('scan-log-box');
+
+  // Register Skip Scan / Manual Entry click handler
+  const skipBtn = document.getElementById('skip-scan-btn');
+  if (skipBtn) {
+    skipBtn.addEventListener('click', () => {
+      onScanComplete({});
+    });
+  }
 
   // Register Sample Click Handlers
   const sampleBtns = container.querySelectorAll('.sample-btn');
