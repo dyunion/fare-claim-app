@@ -17,7 +17,7 @@ export function initScanner(containerId, onScanComplete, showToast) {
         </div>
         
         <p class="text-secondary" style="font-size: 13px; line-height: 1.5; margin-bottom: 10px;">
-          乗換案内アプリの検索結果、領収書、または乗車券のスクリーンショットをアップロードすると、AIが自動で日付・ルート・金額を解析して入力フォームに反映します。
+          乗換案内アプリの検索結果、領収書、乗車券のスクリーンショット、またはPDFファイルをアップロードすると、AIが自動で日付・ルート・金額を解析して入力フォームに反映します。
         </p>
 
         <!-- Dropzone -->
@@ -26,10 +26,10 @@ export function initScanner(containerId, onScanComplete, showToast) {
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </div>
           <div class="dropzone-text">
-            <h4>画像をドラッグ＆ドロップ</h4>
-            <p>またはファイルを選択 (PNG, JPG)</p>
+            <h4>画像またはPDFをドラッグ＆ドロップ</h4>
+            <p>またはファイルを選択 (PNG, JPG, PDF)</p>
           </div>
-          <input type="file" id="scanner-file-input" style="display: none;" accept="image/*">
+          <input type="file" id="scanner-file-input" style="display: none;" accept="image/*,application/pdf">
         </div>
 
         <!-- Samples -->
@@ -57,10 +57,15 @@ export function initScanner(containerId, onScanComplete, showToast) {
         <div class="scanner-preview-wrapper" id="preview-wrapper">
           <div id="scanner-placeholder" class="text-secondary" style="text-align: center; padding: 20px;">
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-muted" style="margin-bottom: 12px; opacity: 0.5;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <p style="font-size: 13px;">左側から画像をアップロードするか、サンプルを選択してください</p>
+            <p style="font-size: 13px;">左側から画像またはPDFをアップロードするか、サンプルを選択してください</p>
           </div>
           
           <img id="preview-image" class="scanner-preview-img" style="display: none;" alt="Scan Preview">
+          <div id="preview-pdf" class="scanner-preview-pdf" style="display: none; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 40px; text-align: center; background: rgba(255, 255, 255, 0.05); border-radius: 8px; border: 1px dashed var(--glass-border);">
+            <div class="pdf-icon-wrapper" style="font-size: 64px;">📄</div>
+            <div id="pdf-filename" style="font-weight: 600; font-size: 14px; color: var(--text-primary); word-break: break-all; max-width: 80%;">document.pdf</div>
+            <div style="font-size: 11px; color: var(--text-secondary);">PDFドキュメントを読み込みました</div>
+          </div>
           <div id="laser-line" class="scanner-laser"></div>
           
           <!-- Bounding Boxes will be dynamically inserted here -->
@@ -80,6 +85,7 @@ export function initScanner(containerId, onScanComplete, showToast) {
   const fileInput = document.getElementById('scanner-file-input');
   const previewWrapper = document.getElementById('preview-wrapper');
   const previewImage = document.getElementById('preview-image');
+  const previewPdf = document.getElementById('preview-pdf');
   const placeholder = document.getElementById('scanner-placeholder');
   const laserLine = document.getElementById('laser-line');
   const ocrContainer = document.getElementById('ocr-overlay-container');
@@ -127,8 +133,11 @@ export function initScanner(containerId, onScanComplete, showToast) {
   });
 
   function handleUserFile(file) {
-    if (!file.type.startsWith('image/')) {
-      showToast('エラー: 画像ファイルのみサポートされています', 'danger');
+    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf';
+
+    if (!isImage && !isPdf) {
+      showToast('エラー: 画像またはPDFファイルのみサポートされています', 'danger');
       return;
     }
 
@@ -141,7 +150,8 @@ export function initScanner(containerId, onScanComplete, showToast) {
         id: 'user-uploaded',
         name: file.name,
         mimeType: file.type,
-        imgUrl: event.target.result, // Use actual user image
+        isPdf: isPdf,
+        imgUrl: event.target.result, // Use actual user image or pdf data url
         parsedData: {
           ...randomSample.parsedData,
           title: `スキャン: ${file.name.replace(/\.[^/.]+$/, "")}`
@@ -158,22 +168,32 @@ export function initScanner(containerId, onScanComplete, showToast) {
     ocrContainer.innerHTML = '';
     laserLine.style.display = 'block';
     
-    // Set Preview Image
-    previewImage.onload = () => {
-      const isVertical = previewImage.naturalHeight > previewImage.naturalWidth;
-      if (isVertical) {
-        previewWrapper.style.aspectRatio = 'auto';
-        previewWrapper.style.height = '480px';
-        previewWrapper.style.width = 'fit-content';
-        previewWrapper.style.margin = '0 auto';
-      } else {
-        previewWrapper.style.aspectRatio = '16 / 9';
-        previewWrapper.style.height = 'auto';
-        previewWrapper.style.width = 'auto';
-      }
-    };
-    previewImage.src = sample.imgUrl;
-    previewImage.style.display = 'block';
+    // Set Preview
+    if (sample.isPdf) {
+      previewImage.style.display = 'none';
+      previewPdf.style.display = 'flex';
+      document.getElementById('pdf-filename').textContent = sample.name;
+      previewWrapper.style.aspectRatio = '4 / 3'; // Standard PDF ratio
+      previewWrapper.style.height = 'auto';
+      previewWrapper.style.width = 'auto';
+    } else {
+      previewPdf.style.display = 'none';
+      previewImage.onload = () => {
+        const isVertical = previewImage.naturalHeight > previewImage.naturalWidth;
+        if (isVertical) {
+          previewWrapper.style.aspectRatio = 'auto';
+          previewWrapper.style.height = '480px';
+          previewWrapper.style.width = 'fit-content';
+          previewWrapper.style.margin = '0 auto';
+        } else {
+          previewWrapper.style.aspectRatio = '16 / 9';
+          previewWrapper.style.height = 'auto';
+          previewWrapper.style.width = 'auto';
+        }
+      };
+      previewImage.src = sample.imgUrl;
+      previewImage.style.display = 'block';
+    }
     placeholder.style.display = 'none';
     
     // Status Badge & Log Box
