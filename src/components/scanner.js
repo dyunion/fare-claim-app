@@ -1,6 +1,7 @@
 // SmartFare OCR Scanner Component
 
 import { MOCK_OCR_SAMPLES } from '../data/samples.js';
+import { GEMINI_CONFIG } from '../config.js';
 
 export function initScanner(containerId, onScanComplete, showToast) {
   const container = document.getElementById(containerId);
@@ -133,13 +134,13 @@ export function initScanner(containerId, onScanComplete, showToast) {
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      // Simulate fallback generic scanning for random user files
-      // We will match a random sample metadata structure but change the titles dynamically so it feels alive
+      // Create user sample structure
       const randomSample = MOCK_OCR_SAMPLES[Math.floor(Math.random() * MOCK_OCR_SAMPLES.length)];
       const userSample = {
         ...randomSample,
         id: 'user-uploaded',
         name: file.name,
+        mimeType: file.type,
         imgUrl: event.target.result, // Use actual user image
         parsedData: {
           ...randomSample.parsedData,
@@ -151,11 +152,11 @@ export function initScanner(containerId, onScanComplete, showToast) {
     reader.readAsDataURL(file);
   }
 
-  // Scanning Simulation Core Logic
-  function startScanning(sample) {
+  // Scanning Simulation / Real OCR Logic
+  async function startScanning(sample) {
     // Reset scanner overlays
     ocrContainer.innerHTML = '';
-    laserLine.style.display = 'none';
+    laserLine.style.display = 'block';
     
     // Set Preview Image
     previewImage.onload = () => {
@@ -183,7 +184,126 @@ export function initScanner(containerId, onScanComplete, showToast) {
     logBox.style.display = 'block';
     logBox.innerHTML = `<div style="color: var(--accent-cyan);">[INFO] 画像読み込み成功: ${sample.name}</div>`;
     
-    // Trigger Scanning Animation
+    // Check if we have a real Gemini API Key configured
+    const isRealApiKey = GEMINI_CONFIG.API_KEY && 
+                         GEMINI_CONFIG.API_KEY !== 'your-gemini-api-key' && 
+                         GEMINI_CONFIG.API_KEY.trim() !== '';
+
+    if (sample.id === 'user-uploaded' && isRealApiKey) {
+      writeLog('[OCR] Gemini AI Vision 解析エンジンを起動中...');
+      writeLog('[OCR] 画像データをクラウドに送信しています...');
+      
+      try {
+        const base64Data = sample.imgUrl.split(',')[1];
+        const mimeType = sample.mimeType || 'image/png';
+        
+        // Call Gemini OCR API
+        const parsedData = await performGeminiOCR(base64Data, mimeType, sample.name);
+        
+        writeLog('[OCR] AI 解析結果を受信しました。データをマッピングしています...');
+        writeLog(`[INFO] ルート: ${parsedData.title}`);
+        writeLog(`[INFO] 合計金額: ¥${(parsedData.amount || 0).toLocaleString()}`);
+        
+        // Add visual overlay covering the image
+        const div = document.createElement('div');
+        div.className = 'ocr-highlight cyan-highlight detected';
+        div.style.top = '10%';
+        div.style.left = '10%';
+        div.style.width = '80%';
+        div.style.height = '80%';
+        div.style.display = 'flex';
+        div.style.alignItems = 'center';
+        div.style.justifyContent = 'center';
+        div.style.background = 'rgba(6, 182, 212, 0.05)';
+        div.style.border = '2px dashed var(--accent-cyan)';
+        div.innerHTML = `<span style="color: var(--accent-cyan); font-weight: bold; font-size: 14px; background: rgba(0,0,0,0.8); padding: 6px 12px; border-radius: 4px;">AI解析成功: ${parsedData.title}</span>`;
+        ocrContainer.appendChild(div);
+
+        laserLine.style.display = 'none';
+        scanBadge.className = 'badge badge-approved';
+        scanBadge.textContent = '解析完了';
+        
+        writeLog('<span style="color: var(--accent-emerald);">[SUCCESS] Gemini AIによる正確な路線読み込みに成功しました！</span>');
+        showToast('AIによるスクリーンショットの解析が完了しました！', 'success');
+        
+        setTimeout(() => {
+          onScanComplete(parsedData);
+        }, 1200);
+        
+      } catch (err) {
+        console.error("Gemini OCR failed:", err);
+        writeLog(`<span style="color: var(--accent-rose);">[ERROR] AI解析に失敗しました: ${err.message}</span>`);
+        writeLog('[INFO] デモモード（シミュレーション）にフォールバックします...');
+        
+        // Fallback to simulated scan
+        runSimulatedScan(sample);
+      }
+    } else {
+      // Normal simulated scan for mock samples or fallback
+      runSimulatedScan(sample);
+    }
+  }
+
+  async function performGeminiOCR(base64Data, mimeType, filename) {
+    const today = new Date().toISOString().split('T')[0];
+    const prompt = `You are an expert Japanese receipt and transit route OCR assistant.
+Analyze this image (from a transit route search app like Yahoo Transit, Google Maps, Jorudan, etc., or a receipt/ticket) and extract the route details.
+Respond ONLY with a JSON object. Do not include markdown formatting or backticks.
+
+Expected JSON output structure:
+{
+  "date": "YYYY-MM-DD", // Extract the date if present. If not found or unclear, use "${today}"
+  "title": "A short summary in Japanese of the travel purpose or route (e.g., '新宿〜六本木一丁目')",
+  "category": "subway | shinkansen | highway | flight | bus | taxi", // Choose the primary category
+  "amount": 1230, // Total cost in Yen (integer)
+  "legs": [ // List each step in the travel route
+    {
+      "type": "subway | shinkansen | highway | flight | bus | taxi",
+      "from": "Origin station name in Japanese (e.g. '新宿駅')",
+      "to": "Destination station name in Japanese (e.g. '六本木一丁目駅')",
+      "amount": 280, // Cost for this leg in Yen (integer)
+      "remark": "Train line, transit info, or note in Japanese (e.g. '都営大江戸線・東京メトロ南北線')"
+    }
+  ]
+}
+`;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_CONFIG.API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: prompt },
+            {
+              inlineData: {
+                mimeType: mimeType,
+                data: base64Data
+              }
+            }
+          ]
+        }],
+        generationConfig: {
+          responseMimeType: "application/json"
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Gemini API Error (status ${response.status})`);
+    }
+
+    const result = await response.json();
+    const textResponse = result.candidates[0].content.parts[0].text;
+    
+    // Clean up markdown block wraps if present
+    const cleanJson = textResponse.replace(/^```json/, '').replace(/```$/, '').trim();
+    return JSON.parse(cleanJson);
+  }
+
+  function runSimulatedScan(sample) {
     laserLine.style.display = 'block';
     
     // Log items with timers
