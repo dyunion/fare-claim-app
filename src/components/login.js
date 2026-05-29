@@ -8,6 +8,7 @@ export function initLogin(containerId, onLoginSuccess) {
   renderLogin();
 
   function renderLogin() {
+    const isMockMode = !SUPABASE_CONFIG.URL || SUPABASE_CONFIG.URL.includes("your-project-ref");
     container.innerHTML = `
       <div class="login-overlay">
         <div class="login-card glass-card">
@@ -35,12 +36,20 @@ export function initLogin(containerId, onLoginSuccess) {
             </button>
           </form>
 
-          <div style="margin-top: 24px; text-align: center;">
-            <p style="font-size: 11px; color: var(--text-muted);">
-              ※デモ用アカウント<br>
-              一般: yrai / yrai123 &nbsp;|&nbsp; 管理者: admin / admin123
-            </p>
-          </div>
+          ${isMockMode ? `
+            <div style="margin-top: 24px; text-align: center;">
+              <p style="font-size: 11px; color: var(--text-muted);">
+                ※デモ用アカウント<br>
+                一般: yrai / yrai123 &nbsp;|&nbsp; 管理者: admin / admin123
+              </p>
+            </div>
+          ` : `
+            <div style="margin-top: 24px; text-align: center;">
+              <p style="font-size: 11px; color: var(--text-muted);">
+                登録済みのユーザーIDとパスワードでログインしてください
+              </p>
+            </div>
+          `}
         </div>
       </div>
     `;
