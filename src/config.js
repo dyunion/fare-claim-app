@@ -1,8 +1,8 @@
 // SmartFare Supabase & Gemini API Connection Configuration
 
 export const SUPABASE_CONFIG = {
-  URL: "https://your-project-ref.supabase.co", // 後ほどご自身の Supabase プロジェクトの URL に書き換えてください。
-  ANON_KEY: "your-anon-public-key" // 後ほどご自身の Supabase anon キーに書き換えてください。
+  URL: "https://jeglyodfwftpiodzyhfi.supabase.co",
+  ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplZ2x5b2Rmd2Z0cGlvZHp5aGZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMjg2MzUsImV4cCI6MjA5NTYwNDYzNX0.gTgqnqEcl6qHagzxJx3JGLvYtFJiWumdYOjKsj96LQI"
 };
 
 export const GEMINI_CONFIG = {
