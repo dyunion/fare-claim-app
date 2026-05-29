@@ -554,7 +554,8 @@ function renderHistoryView(wrapperId) {
         <div class="filter-selects">
           <select id="history-filter-category" class="form-control" style="padding: 10px 14px;">
             <option value="all">すべての交通区分</option>
-            <option value="subway">地下鉄・在来線</option>
+            <option value="jr">JR線</option>
+            <option value="subway">地下鉄・私鉄</option>
             <option value="shinkansen">新幹線・特急</option>
             <option value="highway">高速道路</option>
             <option value="flight">飛行機</option>
@@ -762,8 +763,9 @@ function renderHistoryView(wrapperId) {
 // Helpers
 function getCategoryLabel(cat) {
   const map = {
+    jr: 'JR線',
     shinkansen: '新幹線・特急',
-    subway: '地下鉄・在来線',
+    subway: '地下鉄・私鉄',
     highway: '高速道路',
     flight: '飛行機',
     bus: 'バス',

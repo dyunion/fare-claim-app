@@ -1,8 +1,9 @@
 // SmartFare Dashboard Component
 
 const TRANSIT_METRIC_CONFIG = {
+  jr: { label: 'JR線', dotColor: '#10b981' },
   shinkansen: { label: '新幹線', dotColor: '#2563eb' },
-  subway: { label: '地下鉄・在来線', dotColor: '#e11d48' },
+  subway: { label: '地下鉄・私鉄', dotColor: '#e11d48' },
   highway: { label: '高速道路', dotColor: '#059669' },
   flight: { label: '飛行機', dotColor: '#7c3aed' },
   bus: { label: 'バス', dotColor: '#d97706' },

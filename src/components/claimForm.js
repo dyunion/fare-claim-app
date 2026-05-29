@@ -2,7 +2,8 @@
 
 // Supported transport modes
 const TRANSPORT_TYPES = [
-  { value: 'subway', label: '地下鉄・在来線', class: 'subway', icon: '🚇' },
+  { value: 'jr', label: 'JR線', class: 'jr', icon: '🚆' },
+  { value: 'subway', label: '地下鉄・私鉄', class: 'subway', icon: '🚇' },
   { value: 'shinkansen', label: '新幹線・特急', class: 'shinkansen', icon: '🚄' },
   { value: 'highway', label: '高速道路・有料道路', class: 'highway', icon: '🛣️' },
   { value: 'flight', label: '飛行機・LCC', class: 'flight', icon: '✈️' },
@@ -405,8 +406,9 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
 // Helper
 function getCategoryLabel(cat) {
   const map = {
+    jr: 'JR線',
     shinkansen: '新幹線・特急',
-    subway: '地下鉄・在来線',
+    subway: '地下鉄・私鉄',
     highway: '高速道路',
     flight: '飛行機',
     bus: 'バス',
