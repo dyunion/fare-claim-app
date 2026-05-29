@@ -5,4 +5,4 @@
 .DS_Store
 
 # Local database backup (optional, but keep out of production git repo)
-data/
+/data/
