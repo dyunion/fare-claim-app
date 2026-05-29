@@ -233,10 +233,25 @@ export function initScanner(containerId, onScanComplete, showToast) {
       } catch (err) {
         console.error("Gemini OCR failed:", err);
         writeLog(`<span style="color: var(--accent-rose);">[ERROR] AI解析に失敗しました: ${err.message}</span>`);
-        writeLog('[INFO] デモモード（シミュレーション）にフォールバックします...');
+        writeLog('[INFO] APIキーの入力やインターネット接続をご確認ください。');
         
-        // Fallback to simulated scan
-        runSimulatedScan(sample);
+        laserLine.style.display = 'none';
+        scanBadge.className = 'badge badge-pending'; // Styled like warning
+        scanBadge.textContent = '解析エラー';
+        
+        showToast(`AI解析エラー: ${err.message}`, 'danger');
+        
+        writeLog('<div style="margin-top: 8px;"><button id="btn-fallback-demo" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; cursor: pointer; border-color: rgba(255,255,255,0.15);">デモデータで続行する</button></div>');
+        
+        setTimeout(() => {
+          const fallbackBtn = document.getElementById('btn-fallback-demo');
+          if (fallbackBtn) {
+            fallbackBtn.addEventListener('click', () => {
+              writeLog('[INFO] デモモード（シミュレーション）を開始します...');
+              runSimulatedScan(sample);
+            });
+          }
+        }, 100);
       }
     } else {
       // Normal simulated scan for mock samples or fallback
