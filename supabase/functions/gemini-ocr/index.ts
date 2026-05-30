@@ -64,10 +64,13 @@ Expected JSON output structure:
 If a date is not visible or unclear, use "${today}". If an amount is not visible, use 0.`;
 
   const geminiResponse = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": geminiApiKey,
+      },
       body: JSON.stringify({
         contents: [
           {
