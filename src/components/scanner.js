@@ -298,12 +298,13 @@ export function initScanner(containerId, onScanComplete, showToast) {
 
   async function performGeminiOCR(base64Data, mimeType, filename) {
     const token = localStorage.getItem('smartfare_token');
+    const authToken = isSupabaseJwt(token) ? token : SUPABASE_CONFIG.ANON_KEY;
     const response = await fetch(EDGE_FUNCTIONS.GEMINI_OCR_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_CONFIG.ANON_KEY,
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        'Authorization': `Bearer ${authToken}`
       },
       body: JSON.stringify({
         base64Data,
@@ -325,6 +326,10 @@ export function initScanner(containerId, onScanComplete, showToast) {
       throw new Error("AI解析結果の形式が正しくありません。");
     }
     return result;
+  }
+
+  function isSupabaseJwt(token) {
+    return typeof token === 'string' && token.split('.').length === 3;
   }
 
   function runSimulatedScan(sample) {
