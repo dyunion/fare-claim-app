@@ -179,6 +179,7 @@ revoke all on function public.delete_user_by_admin(uuid) from public, anon, auth
 revoke all on function public.update_user_profile_by_admin(uuid, text, text) from public, anon, authenticated;
 revoke all on function public.update_user_password_by_admin(uuid, text) from public, anon, authenticated;
 
+grant execute on function public.smartfare_current_user_is_admin() to authenticated;
 grant execute on function public.list_users_by_admin() to authenticated;
 grant execute on function public.delete_user_by_admin(uuid) to authenticated;
 grant execute on function public.update_user_profile_by_admin(uuid, text, text) to authenticated;

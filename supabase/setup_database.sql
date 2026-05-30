@@ -167,6 +167,7 @@ grant usage on schema public to anon, authenticated;
 grant select on public.profiles to authenticated;
 grant select, insert, update, delete on public.claims to authenticated;
 grant select, insert, update on public.system_settings to authenticated;
+grant execute on function public.smartfare_current_user_is_admin() to authenticated;
 
 insert into public.system_settings (key, value)
 values ('fuel_efficiency', '{"standard":9.6,"compact":12.4,"kei":15.1,"bike":30.0}'::jsonb)
