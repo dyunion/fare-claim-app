@@ -200,14 +200,14 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
         <!-- Car Cost Calculation Panel (Only shown if private_car or rental_car is selected) -->
         ${isCar ? `
         <div class="car-calculation-panel" style="grid-column: span 6; margin-top: 6px; padding: 12px; border-radius: var(--border-radius-sm); background: rgba(255, 255, 255, 0.02); border: 1px dashed var(--glass-border); display: flex; flex-direction: column; gap: 8px;">
-          <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 6px;">
+          <div class="car-calculation-grid" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+            <div class="car-calculation-field" style="display: flex; align-items: center; gap: 6px;">
               <span style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">距離 (往復):</span>
               <input type="number" class="form-control leg-distance-input" placeholder="km" value="${leg.distance !== undefined ? leg.distance : ''}" style="width: 70px; padding: 4px 8px; font-size: 12px;" min="0" step="any" required>
               <span style="font-size: 12px; color: var(--text-muted);">km</span>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 6px;">
+            <div class="car-calculation-field" style="display: flex; align-items: center; gap: 6px;">
               <span style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">車種/燃費:</span>
               <select class="form-control leg-fuel-type-select" style="width: 140px; padding: 4px 8px; font-size: 12px;">
                 <option value="standard" ${leg.fuelEfficiencyType === 'standard' ? 'selected' : ''}>普通 (${fuelSettings ? fuelSettings.standard : 9.6} km/L)</option>
@@ -218,19 +218,19 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
               </select>
             </div>
 
-            <div class="custom-fuel-efficiency-wrapper" style="display: ${leg.fuelEfficiencyType === 'custom' ? 'flex' : 'none'}; align-items: center; gap: 6px;">
+            <div class="custom-fuel-efficiency-wrapper car-calculation-field" style="display: ${leg.fuelEfficiencyType === 'custom' ? 'flex' : 'none'}; align-items: center; gap: 6px;">
               <span style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">燃費値:</span>
               <input type="number" class="form-control leg-fuel-input" placeholder="km/L" value="${leg.fuelEfficiency || ''}" style="width: 70px; padding: 4px 8px; font-size: 12px;" min="0.1" step="any" ${leg.fuelEfficiencyType === 'custom' ? 'required' : ''}>
               <span style="font-size: 12px; color: var(--text-muted);">km/L</span>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 6px;">
+            <div class="car-calculation-field" style="display: flex; align-items: center; gap: 6px;">
               <span style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">単価:</span>
               <input type="number" class="form-control leg-gas-price-input" placeholder="円" value="${leg.gasPrice !== undefined ? leg.gasPrice : 160}" style="width: 70px; padding: 4px 8px; font-size: 12px;" min="0" required>
               <span style="font-size: 12px; color: var(--text-muted);">円/L</span>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 6px;">
+            <div class="car-calculation-field" style="display: flex; align-items: center; gap: 6px;">
               <span style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">駐車場代:</span>
               <input type="number" class="form-control leg-parking-input" placeholder="円" value="${leg.parkingFee !== undefined ? leg.parkingFee : 0}" style="width: 80px; padding: 4px 8px; font-size: 12px;" min="0" required>
               <span style="font-size: 12px; color: var(--text-muted);">円</span>
@@ -252,7 +252,7 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
         ` : ''}
 
         <!-- Sub row for Remarks/Memo & receipt image attachment -->
-        <div style="grid-column: span 6; margin-top: 4px; padding-left: 50px; display: flex; gap: 12px; align-items: center;">
+        <div class="leg-extra-row" style="grid-column: span 6; margin-top: 4px; padding-left: 50px; display: flex; gap: 12px; align-items: center;">
           <input type="text" class="form-control leg-remark-input" placeholder="特記事項・メモ（例: のぞみ片道、領収書添付など）" value="${leg.remark || ''}" style="padding: 6px 12px; font-size: 12px; flex: 1;">
           
           <!-- Receipt element -->

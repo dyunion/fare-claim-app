@@ -1321,18 +1321,82 @@ body {
   }
 
   .leg-item {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
     gap: 12px;
-    padding: 16px;
+    padding: 42px 12px 12px;
+    overflow: hidden;
+    width: 100%;
+    min-width: 0;
   }
+
+  .leg-item > div {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .leg-item .form-control,
+  .leg-item select,
+  .leg-item input {
+    width: 100% !important;
+    max-width: 100%;
+    min-width: 0;
+  }
+
   .leg-number {
     position: absolute;
     top: 10px;
     left: 10px;
+    width: 24px;
   }
+
   .leg-item .btn-danger {
-    grid-column: span 1;
+    align-self: flex-end;
     margin-top: 8px;
+  }
+
+  .car-calculation-panel,
+  .leg-extra-row {
+    grid-column: auto !important;
+    padding-left: 0 !important;
+    width: 100% !important;
+  }
+
+  .car-calculation-grid {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 10px !important;
+  }
+
+  .car-calculation-field,
+  .custom-fuel-efficiency-wrapper {
+    display: grid !important;
+    grid-template-columns: minmax(78px, auto) 1fr auto;
+    width: 100%;
+    align-items: center;
+  }
+
+  .car-calculation-panel > div:last-child {
+    align-items: flex-start !important;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .leg-extra-row {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .leg-receipt-container {
+    width: 100%;
+  }
+
+  .leg-receipt-container > button,
+  .leg-receipt-container > div {
+    width: 100%;
+    justify-content: center;
   }
 
   .claim-summary-box {
