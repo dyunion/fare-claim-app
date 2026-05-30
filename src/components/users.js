@@ -103,6 +103,7 @@ export function initUsers(containerId, users, onAddUser, showToast, fuelSettings
               燃費設定を保存
             </button>
           </div>
+          <div id="fuel-settings-status" style="display: none; margin-top: 8px; text-align: right; font-size: 12px; color: var(--text-secondary);"></div>
         </form>
       </div>
     `;
@@ -152,7 +153,29 @@ export function initUsers(containerId, users, onAddUser, showToast, fuelSettings
         };
 
         if (onSaveFuelSettings) {
-          onSaveFuelSettings(payload);
+          const saveBtn = document.getElementById('save-fuel-settings-btn');
+          const statusEl = document.getElementById('fuel-settings-status');
+          if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.style.opacity = '0.75';
+            saveBtn.textContent = '保存中...';
+          }
+          if (statusEl) {
+            statusEl.style.display = 'block';
+            statusEl.textContent = '保存中...';
+          }
+
+          Promise.resolve(onSaveFuelSettings(payload)).catch(() => {
+            if (saveBtn) {
+              saveBtn.disabled = false;
+              saveBtn.style.opacity = '';
+              saveBtn.textContent = '燃費設定を保存';
+            }
+            if (statusEl) {
+              statusEl.style.display = 'none';
+              statusEl.textContent = '';
+            }
+          });
         }
       });
     }

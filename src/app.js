@@ -1,12 +1,12 @@
 // SmartFare Application Main Orchestrator
 
-import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=23';
-import { MOCK_CLAIMS } from './data/samples.js?v=23';
-import { initLogin } from './components/login.js?v=23';
-import { initDashboard } from './components/dashboard.js?v=23';
-import { initScanner } from './components/scanner.js?v=23';
-import { initClaimForm } from './components/claimForm.js?v=23';
-import { initUsers } from './components/users.js?v=23';
+import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=24';
+import { MOCK_CLAIMS } from './data/samples.js?v=24';
+import { initLogin } from './components/login.js?v=24';
+import { initDashboard } from './components/dashboard.js?v=24';
+import { initScanner } from './components/scanner.js?v=24';
+import { initClaimForm } from './components/claimForm.js?v=24';
+import { initUsers } from './components/users.js?v=24';
 
 // Application State
 let state = {
@@ -521,8 +521,13 @@ async function renderUsersView(wrapperId) {
       showToast,
       state.fuelSettings,
       async (newFuelSettings) => {
-        await apiSaveFuelSettings(newFuelSettings);
-        renderUsersView(wrapperId);
+        try {
+          await apiSaveFuelSettings(newFuelSettings);
+          renderUsersView(wrapperId);
+        } catch (err) {
+          // apiSaveFuelSettings already shows the specific error.
+          throw err;
+        }
       },
       async (username, payload) => {
         const uList = JSON.parse(localStorage.getItem('smartfare_mock_users') || JSON.stringify(defaultMockUsers));
@@ -572,8 +577,13 @@ async function renderUsersView(wrapperId) {
       showToast,
       state.fuelSettings,
       async (newFuelSettings) => {
-        await apiSaveFuelSettings(newFuelSettings);
-        renderUsersView(wrapperId);
+        try {
+          await apiSaveFuelSettings(newFuelSettings);
+          renderUsersView(wrapperId);
+        } catch (err) {
+          // apiSaveFuelSettings already shows the specific error.
+          throw err;
+        }
       },
       async (userId, payload) => {
         await apiUpdateUser(userId, payload);
@@ -969,10 +979,10 @@ async function apiSaveFuelSettings(newSettings) {
   }
 
   try {
-    await apiFetch('/rest/v1/system_settings', {
+    await apiFetch('/rest/v1/system_settings?on_conflict=key', {
       method: 'POST',
       headers: {
-        'Prefer': 'resolution=merge-duplicates',
+        'Prefer': 'resolution=merge-duplicates,return=minimal',
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -986,6 +996,7 @@ async function apiSaveFuelSettings(newSettings) {
   } catch (err) {
     console.error("Failed to save fuel settings:", err);
     showToast(`設定の保存に失敗しました: ${err.message}`, "danger");
+    throw err;
   }
 }
 
