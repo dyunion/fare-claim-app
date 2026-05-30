@@ -1,7 +1,7 @@
 // SmartFare OCR Scanner Component
 
 import { MOCK_OCR_SAMPLES } from '../data/samples.js';
-import { GEMINI_CONFIG } from '../config.js';
+import { EDGE_FUNCTIONS, SUPABASE_CONFIG } from '../config.js';
 
 export function initScanner(containerId, onScanComplete, showToast) {
   const container = document.getElementById(containerId);
@@ -223,12 +223,11 @@ export function initScanner(containerId, onScanComplete, showToast) {
     logBox.style.display = 'block';
     logBox.innerHTML = `<div style="color: var(--accent-cyan);">[INFO] 画像読み込み成功: ${sample.name}</div>`;
     
-    // Check if we have a real Gemini API Key configured
-    const isRealApiKey = GEMINI_CONFIG.API_KEY && 
-                         GEMINI_CONFIG.API_KEY !== 'your-gemini-api-key' && 
-                         GEMINI_CONFIG.API_KEY.trim() !== '';
+    const isProductionOcrAvailable = SUPABASE_CONFIG.URL &&
+      !SUPABASE_CONFIG.URL.includes("your-project-ref") &&
+      EDGE_FUNCTIONS.GEMINI_OCR_URL;
 
-    if (sample.id === 'user-uploaded' && isRealApiKey) {
+    if (sample.id === 'user-uploaded' && isProductionOcrAvailable) {
       writeLog('[OCR] Gemini AI Vision 解析エンジンを起動中...');
       writeLog('[OCR] 画像データをクラウドに送信しています...');
       
@@ -236,7 +235,6 @@ export function initScanner(containerId, onScanComplete, showToast) {
         const base64Data = sample.imgUrl.split(',')[1];
         const mimeType = sample.mimeType || 'image/png';
         
-        // Call Gemini OCR API
         const parsedData = await performGeminiOCR(base64Data, mimeType, sample.name);
         
         writeLog('[OCR] AI 解析結果を受信しました。データをマッピングしています...');
@@ -272,7 +270,7 @@ export function initScanner(containerId, onScanComplete, showToast) {
       } catch (err) {
         console.error("Gemini OCR failed:", err);
         writeLog(`<span style="color: var(--accent-rose);">[ERROR] AI解析に失敗しました: ${err.message}</span>`);
-        writeLog('[INFO] APIキーの入力やインターネット接続をご確認ください。');
+        writeLog('[INFO] Edge Functionのデプロイ、Gemini APIキーのSecret設定、またはインターネット接続をご確認ください。');
         
         laserLine.style.display = 'none';
         scanBadge.className = 'badge badge-pending'; // Styled like warning
@@ -299,49 +297,18 @@ export function initScanner(containerId, onScanComplete, showToast) {
   }
 
   async function performGeminiOCR(base64Data, mimeType, filename) {
-    const today = new Date().toISOString().split('T')[0];
-    const prompt = `You are an expert Japanese receipt and transit route OCR assistant.
-Analyze this image (from a transit route search app like Yahoo Transit, Google Maps, Jorudan, etc., or a receipt/ticket) and extract the route details.
-Respond ONLY with a JSON object. Do not include markdown formatting or backticks.
-
-Expected JSON output structure:
-{
-  "date": "YYYY-MM-DD", // Extract the date if present. If not found or unclear, use "${today}"
-  "title": "A short summary in Japanese of the travel purpose or route (e.g., '新宿〜六本木一丁目')",
-  "category": "jr | subway | private_rail | shinkansen | bus | taxi | private_car | rental_car | highway | flight", // Choose the primary category
-  "amount": 1230, // Total cost in Yen (integer)
-  "legs": [ // List each step in the travel route
-    {
-      "type": "jr | subway | private_rail | shinkansen | bus | taxi | private_car | rental_car | highway | flight",
-      "from": "Origin station name in Japanese (e.g. '新宿駅')",
-      "to": "Destination station name in Japanese (e.g. '六本木一丁目駅')",
-      "amount": 280, // Cost for this leg in Yen (integer)
-      "remark": "Train line, transit info, or note in Japanese (e.g. '都営大江戸線・東京メトロ南北線')"
-    }
-  ]
-}
-`;
-
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_CONFIG.API_KEY}`, {
+    const token = localStorage.getItem('smartfare_token');
+    const response = await fetch(EDGE_FUNCTIONS.GEMINI_OCR_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_CONFIG.ANON_KEY,
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                mimeType: mimeType,
-                data: base64Data
-              }
-            }
-          ]
-        }],
-        generationConfig: {
-          responseMimeType: "application/json"
-        }
+        base64Data,
+        mimeType,
+        filename
       })
     });
 
@@ -352,20 +319,10 @@ Expected JSON output structure:
     }
 
     const result = await response.json();
-    if (!result.candidates || result.candidates.length === 0) {
-      throw new Error("No candidates returned from Gemini");
+    if (!result || !result.date || !result.title || !Array.isArray(result.legs)) {
+      throw new Error("AI解析結果の形式が正しくありません。");
     }
-    const textResponse = result.candidates[0].content.parts[0].text;
-    
-    // Robust JSON extraction
-    const start = textResponse.indexOf('{');
-    const end = textResponse.lastIndexOf('}');
-    if (start !== -1 && end !== -1) {
-      const jsonStr = textResponse.substring(start, end + 1);
-      return JSON.parse(jsonStr);
-    }
-    
-    throw new Error("No valid JSON structure found in Gemini response");
+    return result;
   }
 
   function runSimulatedScan(sample) {
