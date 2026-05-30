@@ -1,12 +1,12 @@
 // SmartFare Application Main Orchestrator
 
-import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=25';
-import { MOCK_CLAIMS } from './data/samples.js?v=25';
-import { initLogin } from './components/login.js?v=25';
-import { initDashboard } from './components/dashboard.js?v=25';
-import { initScanner } from './components/scanner.js?v=25';
-import { initClaimForm } from './components/claimForm.js?v=25';
-import { initUsers } from './components/users.js?v=25';
+import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=26';
+import { MOCK_CLAIMS } from './data/samples.js?v=26';
+import { initLogin } from './components/login.js?v=26';
+import { initDashboard } from './components/dashboard.js?v=26';
+import { initScanner } from './components/scanner.js?v=26';
+import { initClaimForm } from './components/claimForm.js?v=26';
+import { initUsers } from './components/users.js?v=26';
 
 // Application State
 let state = {
@@ -22,6 +22,7 @@ let state = {
     bike: 30.0
   }
 };
+let sessionVersion = 0;
 
 // Check if we are in local offline/demo mock mode
 function isMock() {
@@ -106,6 +107,7 @@ function checkSession() {
   const mainAppWrapper = document.getElementById('main-app-wrapper');
 
   if (state.token && state.currentUser) {
+    const currentSessionVersion = sessionVersion;
     // Session exists, load application
     loginContainer.style.display = 'none';
     mainAppWrapper.style.display = '';
@@ -118,23 +120,38 @@ function checkSession() {
     if (usersNav) {
       usersNav.style.display = state.currentUser.role === 'admin' ? 'flex' : 'none';
     }
+
+    if (state.currentView === 'users' && state.currentUser.role !== 'admin') {
+      state.currentView = 'dashboard';
+    }
+
+    switchView(state.currentView);
     
-    // Load settings first, then fetch claims
-    apiFetchSystemSettings().then(() => {
-      apiFetchClaims();
-    });
+    // Load settings and claims in parallel. Ignore stale responses after logout/login switch.
+    Promise.allSettled([
+      apiFetchSystemSettings(currentSessionVersion),
+      apiFetchClaims(currentSessionVersion)
+    ]);
   } else {
     // Show login screen
     mainAppWrapper.style.display = 'none';
     loginContainer.style.display = 'block';
+    const viewContainer = document.getElementById('view-container');
+    if (viewContainer) {
+      viewContainer.innerHTML = '';
+    }
     
     initLogin('login-container', handleLoginSuccess);
   }
 }
 
 function handleLoginSuccess(token, user) {
+  sessionVersion += 1;
   state.token = token;
   state.currentUser = user;
+  state.claims = [];
+  state.activeClaim = null;
+  state.currentView = 'dashboard';
   
   // Save credentials to localStorage
   localStorage.setItem('smartfare_token', token);
@@ -147,6 +164,7 @@ function handleLoginSuccess(token, user) {
 }
 
 function handleLogout() {
+  sessionVersion += 1;
   state.token = null;
   state.currentUser = null;
   state.claims = [];
@@ -180,11 +198,13 @@ function updateSidebarUserProfile() {
 // API Helper wrapping Fetch API with automatic token injection targeting Supabase
 async function apiFetch(path, options = {}) {
   const url = path.startsWith('http') ? path : `${SUPABASE_CONFIG.URL}${path}`;
+  const requestToken = state.token;
+  const requestSessionVersion = sessionVersion;
   
   const headers = options.headers ? { ...options.headers } : {};
   headers['apikey'] = SUPABASE_CONFIG.ANON_KEY;
-  if (state.token) {
-    headers['Authorization'] = `Bearer ${state.token}`;
+  if (requestToken) {
+    headers['Authorization'] = `Bearer ${requestToken}`;
   }
   
   const mergedOptions = {
@@ -197,7 +217,9 @@ async function apiFetch(path, options = {}) {
     
     // If Unauthorized, force logout
     if (response.status === 401) {
-      handleLogout();
+      if (requestSessionVersion === sessionVersion) {
+        handleLogout();
+      }
       throw new Error("認証セッションが切れました。再ログインしてください。");
     }
 
@@ -217,13 +239,18 @@ async function apiFetch(path, options = {}) {
 
     return JSON.parse(responseText);
   } catch (err) {
-    showToast(err.message, 'danger');
+    if (requestSessionVersion === sessionVersion) {
+      showToast(err.message, 'danger');
+    }
     throw err;
   }
 }
 
-async function apiFetchClaims() {
+async function apiFetchClaims(requestSessionVersion = sessionVersion) {
   if (isMock()) {
+    if (requestSessionVersion !== sessionVersion || !state.currentUser) {
+      return;
+    }
     // Load from localStorage or default MOCK_CLAIMS
     let localClaims = localStorage.getItem('smartfare_mock_claims');
     if (!localClaims) {
@@ -237,7 +264,10 @@ async function apiFetchClaims() {
   }
 
   try {
-    const dbClaims = await apiFetch('/rest/v1/claims');
+    const dbClaims = await apiFetch('/rest/v1/claims?select=*&order=created_at.desc');
+    if (requestSessionVersion !== sessionVersion || !state.currentUser) {
+      return;
+    }
     state.claims = dbClaims.map(mapClaimFromDb);
     renderActiveView();
   } catch (err) {
@@ -325,6 +355,8 @@ function switchView(viewName) {
 
 // Render dynamic containers
 function renderActiveView() {
+  if (!state.currentUser) return;
+
   const wrapperId = 'view-container';
   const container = document.getElementById(wrapperId);
   if (!container) return;
@@ -958,8 +990,11 @@ function showReceiptModal(receiptLegs, title) {
 }
 
 // Fetch system settings from Database or localStorage
-async function apiFetchSystemSettings() {
+async function apiFetchSystemSettings(requestSessionVersion = sessionVersion) {
   if (isMock()) {
+    if (requestSessionVersion !== sessionVersion || !state.currentUser) {
+      return;
+    }
     const localSettings = localStorage.getItem('smartfare_system_settings');
     if (localSettings) {
       try {
@@ -976,6 +1011,9 @@ async function apiFetchSystemSettings() {
 
   try {
     const settings = await apiFetch('/rest/v1/system_settings');
+    if (requestSessionVersion !== sessionVersion || !state.currentUser) {
+      return;
+    }
     const fuelEff = settings.find(s => s.key === 'fuel_efficiency');
     if (fuelEff && fuelEff.value) {
       state.fuelSettings = fuelEff.value;
