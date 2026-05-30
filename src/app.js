@@ -1,12 +1,12 @@
 // SmartFare Application Main Orchestrator
 
-import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=22';
-import { MOCK_CLAIMS } from './data/samples.js?v=22';
-import { initLogin } from './components/login.js?v=22';
-import { initDashboard } from './components/dashboard.js?v=22';
-import { initScanner } from './components/scanner.js?v=22';
-import { initClaimForm } from './components/claimForm.js?v=22';
-import { initUsers } from './components/users.js?v=22';
+import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=23';
+import { MOCK_CLAIMS } from './data/samples.js?v=23';
+import { initLogin } from './components/login.js?v=23';
+import { initDashboard } from './components/dashboard.js?v=23';
+import { initScanner } from './components/scanner.js?v=23';
+import { initClaimForm } from './components/claimForm.js?v=23';
+import { initUsers } from './components/users.js?v=23';
 
 // Application State
 let state = {
@@ -195,7 +195,12 @@ async function apiFetch(path, options = {}) {
       return null;
     }
 
-    return await response.json();
+    const responseText = await response.text();
+    if (!responseText) {
+      return null;
+    }
+
+    return JSON.parse(responseText);
   } catch (err) {
     showToast(err.message, 'danger');
     throw err;
