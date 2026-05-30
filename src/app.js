@@ -1,12 +1,12 @@
 // SmartFare Application Main Orchestrator
 
-import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=19';
-import { MOCK_CLAIMS } from './data/samples.js?v=19';
-import { initLogin } from './components/login.js?v=19';
-import { initDashboard } from './components/dashboard.js?v=19';
-import { initScanner } from './components/scanner.js?v=19';
-import { initClaimForm } from './components/claimForm.js?v=19';
-import { initUsers } from './components/users.js?v=19';
+import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=20';
+import { MOCK_CLAIMS } from './data/samples.js?v=20';
+import { initLogin } from './components/login.js?v=20';
+import { initDashboard } from './components/dashboard.js?v=20';
+import { initScanner } from './components/scanner.js?v=20';
+import { initClaimForm } from './components/claimForm.js?v=20';
+import { initUsers } from './components/users.js?v=20';
 
 // Application State
 let state = {
@@ -87,7 +87,7 @@ function checkSession() {
   if (state.token && state.currentUser) {
     // Session exists, load application
     loginContainer.style.display = 'none';
-    mainAppWrapper.style.display = 'grid';
+    mainAppWrapper.style.display = '';
     
     // Update User profiles in sidebar header
     updateSidebarUserProfile();

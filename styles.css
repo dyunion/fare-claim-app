@@ -1128,11 +1128,15 @@ body {
   }
 
   .app-container {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto;
     height: auto;
     min-height: 100dvh;
     padding-bottom: 78px;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 
   .sidebar {
@@ -1189,9 +1193,13 @@ body {
   }
 
   .main-content {
+    grid-column: 1 / -1;
     height: auto;
     min-height: 100dvh;
     padding-bottom: 16px;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 
   .top-header {
@@ -1228,6 +1236,9 @@ body {
 
   .view-container {
     padding: 16px;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 
   .glass-card {
