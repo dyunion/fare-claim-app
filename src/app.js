@@ -1,12 +1,12 @@
 // SmartFare Application Main Orchestrator
 
-import { SUPABASE_CONFIG } from './config.js?v=16';
-import { MOCK_CLAIMS } from './data/samples.js?v=16';
-import { initLogin } from './components/login.js?v=16';
-import { initDashboard } from './components/dashboard.js?v=16';
-import { initScanner } from './components/scanner.js?v=16';
-import { initClaimForm } from './components/claimForm.js?v=16';
-import { initUsers } from './components/users.js?v=16';
+import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=17';
+import { MOCK_CLAIMS } from './data/samples.js?v=17';
+import { initLogin } from './components/login.js?v=17';
+import { initDashboard } from './components/dashboard.js?v=17';
+import { initScanner } from './components/scanner.js?v=17';
+import { initClaimForm } from './components/claimForm.js?v=17';
+import { initUsers } from './components/users.js?v=17';
 
 // Application State
 let state = {
@@ -548,25 +548,12 @@ async function renderUsersView(wrapperId) {
       users,
       async (newUser) => {
         try {
-          await apiFetch('/auth/v1/signup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: `${newUser.username}@smartfare.local`,
-              password: newUser.password,
-              data: {
-                name: newUser.name,
-                role: newUser.role
-              }
-            })
-          });
+          await apiCreateUserByAdmin(newUser);
           showToast('ユーザー情報を登録しました。', 'success');
-          // Wait briefly for the trigger function to insert the profile
-          setTimeout(() => {
-            renderUsersView(wrapperId); // Reload UI
-          }, 800);
+          renderUsersView(wrapperId);
         } catch (err) {
           console.error("Save user failed:", err);
+          showToast(`ユーザー登録に失敗しました: ${err.message}`, 'danger');
         }
       },
       showToast,
@@ -590,6 +577,28 @@ async function renderUsersView(wrapperId) {
     showToast(`ユーザー一覧の読み込みに失敗しました: ${err.message}`, 'danger');
     renderUsersLoadError(wrapperId, err);
   }
+}
+
+async function apiCreateUserByAdmin(newUser) {
+  if (!newUser || !newUser.username || !newUser.name || !newUser.password) {
+    throw new Error('ユーザーID、表示名、パスワードを入力してください。');
+  }
+
+  if (!['admin', 'user'].includes(newUser.role)) {
+    throw new Error('権限には admin または user を指定してください。');
+  }
+
+  await apiFetch(EDGE_FUNCTIONS.ADMIN_USERS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'create',
+      username: newUser.username,
+      name: newUser.name,
+      role: newUser.role,
+      password: newUser.password
+    })
+  });
 }
 
 function renderUsersLoadError(wrapperId, err) {

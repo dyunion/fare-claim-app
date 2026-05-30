@@ -6,5 +6,6 @@ export const SUPABASE_CONFIG = {
 };
 
 export const EDGE_FUNCTIONS = {
-  GEMINI_OCR_URL: `${SUPABASE_CONFIG.URL}/functions/v1/gemini-ocr`
+  GEMINI_OCR_URL: `${SUPABASE_CONFIG.URL}/functions/v1/gemini-ocr`,
+  ADMIN_USERS_URL: `${SUPABASE_CONFIG.URL}/functions/v1/admin-users`
 };
