@@ -16,6 +16,13 @@ const TRANSPORT_TYPES = [
 
 const RECEIPT_REQUIRED_CATEGORIES = ['highway', 'shinkansen', 'flight', 'taxi', 'rental_car'];
 
+function getStatusMeta(status) {
+  const normalized = status || 'pending';
+  if (normalized === 'approved') return { label: '承認済', className: 'badge-approved' };
+  if (normalized === 'draft') return { label: '下書き', className: 'badge-draft' };
+  return { label: '承認待ち', className: 'badge-pending' };
+}
+
 export function initClaimForm(containerId, initialData, onSave, onCancel, showToast, fuelSettings) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -28,7 +35,7 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
     applicantName: initialData?.applicantName || 'Y Rai',
     isNameLocked: initialData?.isNameLocked || false,
     category: initialData?.category || 'subway',
-    status: initialData?.status || 'pending',
+    status: initialData?.status || 'draft',
     legs: initialData?.legs ? JSON.parse(JSON.stringify(initialData.legs)) : [
       { id: 'leg-1', type: 'subway', from: '', to: '', amount: 0, remark: '', receiptImage: null, distance: 0, fuelEfficiencyType: 'standard', fuelEfficiency: 9.6, gasPrice: 160, parkingFee: 0 }
     ]
@@ -42,12 +49,14 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
   renderForm();
 
   function renderForm() {
+    const statusMeta = getStatusMeta(formData.status);
+    const isApproved = formData.status === 'approved';
     container.innerHTML = `
       <div class="form-card glass-card">
         <div class="form-header">
           <h3>${formData.id ? '申請情報の修正' : '交通費精算の作成'}</h3>
-          <span class="badge ${formData.status === 'approved' ? 'badge-approved' : 'badge-pending'}">
-            ${formData.status === 'approved' ? '承認済' : '未承認'}
+          <span class="badge ${statusMeta.className}">
+            ${statusMeta.label}
           </span>
         </div>
 
@@ -81,20 +90,6 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
             </div>
           </div>
 
-          <div class="form-group-row" style="margin-bottom: 20px;">
-            <div class="form-group">
-              <label>精算区分</label>
-              <div style="display: flex; gap: 20px; align-items: center; height: 100%;">
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; font-weight: normal; color: var(--text-primary);">
-                  <input type="radio" name="claim-status-radio" value="pending" ${formData.status === 'pending' ? 'checked' : ''} style="accent-color: var(--accent-purple);"> 未承認
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; font-weight: normal; color: var(--text-primary);">
-                  <input type="radio" name="claim-status-radio" value="approved" ${formData.status === 'approved' ? 'checked' : ''} style="accent-color: var(--accent-emerald);"> 承認済
-                </label>
-              </div>
-            </div>
-          </div>
-
           <!-- Multi-leg Transfer Editor -->
           <div class="legs-container">
             <div class="legs-header">
@@ -119,9 +114,14 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
           <!-- Form Actions -->
           <div class="form-actions">
             <button type="button" id="cancel-claim-btn" class="btn btn-secondary">キャンセル</button>
+            ${!isApproved ? `
+              <button type="button" id="draft-claim-btn" class="btn btn-secondary">
+                下書き保存
+              </button>
+            ` : ''}
             <button type="submit" id="save-claim-btn" class="btn btn-primary">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-              精算申請を保存
+              ${isApproved ? '変更を保存' : '申請する'}
             </button>
           </div>
         </form>
@@ -131,7 +131,15 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
     // Bind core event listeners
     document.getElementById('add-leg-btn').addEventListener('click', addNewLeg);
     document.getElementById('cancel-claim-btn').addEventListener('click', onCancel);
-    document.getElementById('claim-form-element').addEventListener('submit', handleFormSubmit);
+    document.getElementById('claim-form-element').addEventListener('submit', (event) => {
+      event.preventDefault();
+      handleFormSubmit(isApproved ? 'approved' : 'pending', true);
+    });
+
+    const draftBtn = document.getElementById('draft-claim-btn');
+    if (draftBtn) {
+      draftBtn.addEventListener('click', () => handleFormSubmit('draft', false));
+    }
 
     // Initial legs render
     renderLegs();
@@ -497,28 +505,32 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
     });
   }
 
-  function handleFormSubmit() {
+  function handleFormSubmit(targetStatus = 'pending', shouldValidateForSubmit = true) {
     // Validate inputs
     const dateInput = document.getElementById('claim-date').value;
     const titleInput = document.getElementById('claim-title').value; // Holds 目的、詳細
     const applicantInput = document.getElementById('claim-applicant').value;
     const categorySelect = document.getElementById('claim-category').value;
-    
-    // Check status radio selection
-    const statusRadio = document.querySelector('input[name="claim-status-radio"]:checked').value;
 
-    if (!dateInput || !titleInput || !applicantInput) {
+    if (!dateInput || !applicantInput) {
       showToast('必須項目を入力してください', 'danger');
+      return;
+    }
+
+    if (shouldValidateForSubmit && !titleInput) {
+      showToast('目的、詳細を入力してください', 'danger');
       return;
     }
 
     // Double check validity of legs
     let hasInvalidLeg = false;
-    formData.legs.forEach(leg => {
-      if (!leg.from || !leg.to) {
-        hasInvalidLeg = true;
-      }
-    });
+    if (shouldValidateForSubmit) {
+      formData.legs.forEach(leg => {
+        if (!leg.from || !leg.to) {
+          hasInvalidLeg = true;
+        }
+      });
+    }
 
     if (hasInvalidLeg) {
       showToast('利用区間の出発地・到着地を入力してください', 'danger');
@@ -527,15 +539,17 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
 
     // Receipt Validation per Leg
     let missingReceipts = [];
-    formData.legs.forEach((leg, index) => {
-      const isReceiptRequired = RECEIPT_REQUIRED_CATEGORIES.includes(leg.type);
-      if (isReceiptRequired && !leg.receiptImage) {
-        missingReceipts.push(index + 1);
-      }
-    });
+    if (shouldValidateForSubmit) {
+      formData.legs.forEach((leg, index) => {
+        const isReceiptRequired = RECEIPT_REQUIRED_CATEGORIES.includes(leg.type);
+        if (isReceiptRequired && !leg.receiptImage) {
+          missingReceipts.push(index + 1);
+        }
+      });
+    }
 
     if (missingReceipts.length > 0) {
-      const proceed = confirm(`【警告】以下の区間は領収書の添付が必要です：\n区間: ${missingReceipts.join(', ')}\n\n領収書を添付せずに精算申請を保存しますか？`);
+      const proceed = confirm(`【警告】以下の区間は領収書の添付が必要です：\n区間: ${missingReceipts.join(', ')}\n\n領収書を添付せずに申請しますか？`);
       if (!proceed) return;
     }
 
@@ -544,10 +558,10 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
     const savedData = {
       id: formData.id,
       date: dateInput,
-      title: titleInput,
+      title: titleInput || '下書き',
       applicantName: applicantInput,
       category: categorySelect,
-      status: statusRadio,
+      status: targetStatus,
       amount: totalAmount,
       legs: formData.legs
     };

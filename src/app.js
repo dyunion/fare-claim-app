@@ -1,12 +1,12 @@
 // SmartFare Application Main Orchestrator
 
-import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=20';
-import { MOCK_CLAIMS } from './data/samples.js?v=20';
-import { initLogin } from './components/login.js?v=20';
-import { initDashboard } from './components/dashboard.js?v=20';
-import { initScanner } from './components/scanner.js?v=20';
-import { initClaimForm } from './components/claimForm.js?v=20';
-import { initUsers } from './components/users.js?v=20';
+import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=21';
+import { MOCK_CLAIMS } from './data/samples.js?v=21';
+import { initLogin } from './components/login.js?v=21';
+import { initDashboard } from './components/dashboard.js?v=21';
+import { initScanner } from './components/scanner.js?v=21';
+import { initClaimForm } from './components/claimForm.js?v=21';
+import { initUsers } from './components/users.js?v=21';
 
 // Application State
 let state = {
@@ -55,6 +55,12 @@ function mapClaimToDb(claim) {
     applicant_name: claim.applicantName,
     legs: claim.legs
   };
+}
+
+function getClaimStatusMeta(status) {
+  if (status === 'approved') return { label: '承認済', badgeClass: 'badge-approved' };
+  if (status === 'draft') return { label: '下書き', badgeClass: 'badge-draft' };
+  return { label: '承認待ち', badgeClass: 'badge-pending' };
 }
 
 // Initialize Application
@@ -403,7 +409,7 @@ async function handleSaveClaim(savedClaim) {
         state.claims = state.claims.map(c => c.id === savedClaim.id ? savedClaim : c);
       }
       localStorage.setItem('smartfare_mock_claims', JSON.stringify(state.claims));
-      showToast(savedClaim.id ? '【デモ】申請内容を更新しました' : '【デモ】新規申請を登録しました', 'success');
+      showToast(savedClaim.status === 'draft' ? '【デモ】下書きを保存しました' : '【デモ】申請しました', 'success');
       state.activeClaim = null;
       switchView('dashboard');
       return;
@@ -435,7 +441,7 @@ async function handleSaveClaim(savedClaim) {
       });
     }
     
-    showToast(savedClaim.id ? '申請内容を更新しました' : '新規申請を登録しました', 'success');
+    showToast(savedClaim.status === 'draft' ? '下書きを保存しました' : '申請しました', 'success');
     state.activeClaim = null;
     switchView('dashboard');
   } catch (err) {
@@ -662,7 +668,7 @@ function renderHistoryView(wrapperId) {
           
           <select id="history-filter-status" class="form-control" style="padding: 10px 14px;">
             <option value="all">すべてのステータス</option>
-            <option value="all">すべてのステータス</option>
+            <option value="draft">下書き</option>
             <option value="pending">承認待ち</option>
             <option value="approved">承認済</option>
           </select>
@@ -746,6 +752,7 @@ function renderHistoryView(wrapperId) {
       const legsText = claim.legs.map(leg => `${leg.from} ➡ ${leg.to}`).join(' | ');
       const dateStr = claim.date.replace(/-/g, '/');
       const categoryLabel = getCategoryLabel(claim.category);
+      const statusMeta = getClaimStatusMeta(claim.status);
 
       return `
         <tr data-id="${claim.id}">
@@ -770,8 +777,8 @@ function renderHistoryView(wrapperId) {
           </td>
           <td style="font-family: monospace; font-weight: 700; color: var(--accent-cyan);">¥ ${claim.amount.toLocaleString()}</td>
           <td>
-            <span class="badge ${claim.status === 'approved' ? 'badge-approved' : 'badge-pending'}">
-              ${claim.status === 'approved' ? '承認済' : '承認待ち'}
+            <span class="badge ${statusMeta.badgeClass}">
+              ${statusMeta.label}
             </span>
           </td>
           <td style="text-align: right; white-space: nowrap;">
@@ -831,7 +838,7 @@ function renderHistoryView(wrapperId) {
     csvContent += '利用日,申請者,目的、詳細,交通区分,合計金額,ステータス,領収書添付,出発地,到着地,金額,備考\n';
     
     state.claims.forEach(claim => {
-      const statusLabel = claim.status === 'approved' ? '承認済' : '承認待ち';
+      const statusLabel = getClaimStatusMeta(claim.status).label;
       const catLabel = getCategoryLabel(claim.category);
       
       // If multi-leg, print each leg on a row

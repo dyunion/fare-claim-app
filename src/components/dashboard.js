@@ -13,19 +13,26 @@ const TRANSIT_METRIC_CONFIG = {
   flight: { label: '飛行機', dotColor: '#7c3aed' }
 };
 
+function getClaimStatusMeta(status) {
+  if (status === 'approved') return { label: '承認済', badgeClass: 'badge-approved' };
+  if (status === 'draft') return { label: '下書き', badgeClass: 'badge-draft' };
+  return { label: '承認待ち', badgeClass: 'badge-pending' };
+}
+
 export function initDashboard(containerId, claims, onViewChange, onEditClaim, onApproveClaim, showToast, onViewReceipt, isAdmin) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
   // Calculate Metrics
-  const totalAmount = claims.reduce((sum, c) => sum + c.amount, 0);
+  const submittedClaims = claims.filter(c => c.status !== 'draft');
+  const totalAmount = submittedClaims.reduce((sum, c) => sum + c.amount, 0);
   const pendingAmount = claims.filter(c => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0);
   const approvedAmount = claims.filter(c => c.status === 'approved').reduce((sum, c) => sum + c.amount, 0);
   const totalReceipts = claims.length;
 
   // Calculate transit breakdown
   const categoryBreakdown = {};
-  claims.forEach(c => {
+  submittedClaims.forEach(c => {
     categoryBreakdown[c.category] = (categoryBreakdown[c.category] || 0) + c.amount;
   });
 
@@ -174,6 +181,7 @@ export function initDashboard(containerId, claims, onViewChange, onEditClaim, on
           ` : claims.slice().reverse().map(claim => {
             const legsText = claim.legs.map(leg => `${leg.from} ➡ ${leg.to}`).join(' | ');
             const dateStr = claim.date.replace(/-/g, '/');
+            const statusMeta = getClaimStatusMeta(claim.status);
             return `
               <tr data-id="${claim.id}">
                 <td style="font-family: monospace; font-weight: 500;">${dateStr}</td>
@@ -197,8 +205,8 @@ export function initDashboard(containerId, claims, onViewChange, onEditClaim, on
                 </td>
                 <td style="font-family: monospace; font-weight: 700; color: var(--accent-cyan);">¥ ${claim.amount.toLocaleString()}</td>
                 <td>
-                  <span class="badge ${claim.status === 'approved' ? 'badge-approved' : 'badge-pending'}">
-                    ${claim.status === 'approved' ? '承認済' : '承認待ち'}
+                  <span class="badge ${statusMeta.badgeClass}">
+                    ${statusMeta.label}
                   </span>
                 </td>
                 <td style="text-align: right; white-space: nowrap;">

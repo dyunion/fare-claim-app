@@ -21,12 +21,19 @@ create table if not exists public.claims (
   title text not null,
   category text not null,
   amount integer not null default 0,
-  status text not null default 'pending' check (status in ('pending', 'approved')),
+  status text not null default 'pending' check (status in ('draft', 'pending', 'approved')),
   applicant_name text not null,
   legs jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.claims
+drop constraint if exists claims_status_check;
+
+alter table public.claims
+add constraint claims_status_check
+check (status in ('draft', 'pending', 'approved'));
 
 create table if not exists public.system_settings (
   key text primary key,
