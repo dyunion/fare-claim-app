@@ -1,12 +1,12 @@
 // SmartFare Application Main Orchestrator
 
-import { SUPABASE_CONFIG } from './config.js?v=13';
-import { MOCK_CLAIMS } from './data/samples.js?v=13';
-import { initLogin } from './components/login.js?v=13';
-import { initDashboard } from './components/dashboard.js?v=13';
-import { initScanner } from './components/scanner.js?v=13';
-import { initClaimForm } from './components/claimForm.js?v=13';
-import { initUsers } from './components/users.js?v=13';
+import { SUPABASE_CONFIG } from './config.js?v=14';
+import { MOCK_CLAIMS } from './data/samples.js?v=14';
+import { initLogin } from './components/login.js?v=14';
+import { initDashboard } from './components/dashboard.js?v=14';
+import { initScanner } from './components/scanner.js?v=14';
+import { initClaimForm } from './components/claimForm.js?v=14';
+import { initUsers } from './components/users.js?v=14';
 
 // Application State
 let state = {

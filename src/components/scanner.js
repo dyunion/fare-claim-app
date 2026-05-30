@@ -314,7 +314,9 @@ export function initScanner(containerId, onScanComplete, showToast) {
 
     if (!response.ok) {
       const errBody = await response.json().catch(() => ({}));
-      const errMsg = errBody.error?.message || `Status ${response.status}`;
+      const errMsg = typeof errBody.error === 'string'
+        ? errBody.error
+        : errBody.error?.message || errBody.message || `Status ${response.status}`;
       throw new Error(`Gemini API Error: ${errMsg}`);
     }
 
