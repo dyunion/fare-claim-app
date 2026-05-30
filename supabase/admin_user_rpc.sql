@@ -50,6 +50,41 @@ begin
 end;
 $$;
 
+create or replace function public.list_users_by_admin()
+returns table (
+  id uuid,
+  username text,
+  name text,
+  role text
+)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if public.smartfare_current_user_is_admin() is not true then
+    raise exception 'アクセス権限がありません。管理者のみ実行可能です。';
+  end if;
+
+  return query
+  select
+    u.id,
+    coalesce(p.username, split_part(u.email, '@', 1))::text as username,
+    coalesce(p.name, u.raw_user_meta_data ->> 'name', split_part(u.email, '@', 1))::text as name,
+    case
+      when coalesce(p.role, u.raw_user_meta_data ->> 'role') = 'admin' then 'admin'
+      else 'user'
+    end::text as role
+  from auth.users u
+  left join public.profiles p on p.id = u.id
+  where u.email like '%@smartfare.local'
+     or p.id is not null
+  order by
+    case when coalesce(p.role, u.raw_user_meta_data ->> 'role') = 'admin' then 0 else 1 end,
+    coalesce(p.username, split_part(u.email, '@', 1));
+end;
+$$;
+
 create or replace function public.update_user_profile_by_admin(
   target_user_id uuid,
   new_name text,
@@ -81,15 +116,19 @@ begin
     raise exception '自分自身の管理者権限を削除することはできません。';
   end if;
 
-  update public.profiles
+  insert into public.profiles (id, username, name, role)
+  select
+    u.id,
+    split_part(u.email, '@', 1),
+    trim(new_name),
+    new_role
+  from auth.users u
+  where u.id = target_user_id
+  on conflict (id) do update
   set
-    name = trim(new_name),
-    role = new_role
-  where id = target_user_id;
-
-  if not found then
-    raise exception '対象ユーザーのプロフィールが見つかりません。';
-  end if;
+    username = excluded.username,
+    name = excluded.name,
+    role = excluded.role;
 
   update auth.users
   set
@@ -135,10 +174,12 @@ end;
 $$;
 
 revoke all on function public.smartfare_current_user_is_admin() from public, anon, authenticated;
+revoke all on function public.list_users_by_admin() from public, anon, authenticated;
 revoke all on function public.delete_user_by_admin(uuid) from public, anon, authenticated;
 revoke all on function public.update_user_profile_by_admin(uuid, text, text) from public, anon, authenticated;
 revoke all on function public.update_user_password_by_admin(uuid, text) from public, anon, authenticated;
 
+grant execute on function public.list_users_by_admin() to authenticated;
 grant execute on function public.delete_user_by_admin(uuid) to authenticated;
 grant execute on function public.update_user_profile_by_admin(uuid, text, text) to authenticated;
 grant execute on function public.update_user_password_by_admin(uuid, text) to authenticated;

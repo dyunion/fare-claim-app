@@ -1,12 +1,12 @@
 // SmartFare Application Main Orchestrator
 
-import { SUPABASE_CONFIG } from './config.js?v=15';
-import { MOCK_CLAIMS } from './data/samples.js?v=15';
-import { initLogin } from './components/login.js?v=15';
-import { initDashboard } from './components/dashboard.js?v=15';
-import { initScanner } from './components/scanner.js?v=15';
-import { initClaimForm } from './components/claimForm.js?v=15';
-import { initUsers } from './components/users.js?v=15';
+import { SUPABASE_CONFIG } from './config.js?v=16';
+import { MOCK_CLAIMS } from './data/samples.js?v=16';
+import { initLogin } from './components/login.js?v=16';
+import { initDashboard } from './components/dashboard.js?v=16';
+import { initScanner } from './components/scanner.js?v=16';
+import { initClaimForm } from './components/claimForm.js?v=16';
+import { initUsers } from './components/users.js?v=16';
 
 // Application State
 let state = {
@@ -538,7 +538,11 @@ async function renderUsersView(wrapperId) {
   }
 
   try {
-    const users = await apiFetch('/rest/v1/profiles');
+    const users = await apiFetch('/rest/v1/rpc/list_users_by_admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    });
     initUsers(
       wrapperId,
       users,
@@ -583,7 +587,37 @@ async function renderUsersView(wrapperId) {
     );
   } catch (err) {
     console.error("Failed to load users:", err);
+    showToast(`ユーザー一覧の読み込みに失敗しました: ${err.message}`, 'danger');
+    renderUsersLoadError(wrapperId, err);
   }
+}
+
+function renderUsersLoadError(wrapperId, err) {
+  const wrapper = document.getElementById(wrapperId);
+  if (!wrapper) return;
+
+  wrapper.innerHTML = `
+    <div class="glass-card" style="padding: 24px;">
+      <div class="form-header" style="border: none; margin-bottom: 16px;">
+        <h3>ユーザー一覧を表示できませんでした</h3>
+      </div>
+      <p class="text-secondary" style="font-size: 13px; line-height: 1.6; margin-bottom: 16px;">
+        Supabase側の管理者用SQLがまだ反映されていない可能性があります。
+      </p>
+      <div style="padding: 12px; border: 1px solid var(--glass-border); border-radius: 8px; background: rgba(0,0,0,0.18); color: var(--text-secondary); font-size: 12px; line-height: 1.5;">
+        ${escapeHtml(err.message || 'ユーザー一覧の取得に失敗しました。')}
+      </div>
+    </div>
+  `;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 // Render History view with filter operations
