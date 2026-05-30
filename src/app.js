@@ -1,12 +1,12 @@
 // SmartFare Application Main Orchestrator
 
-import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=24';
-import { MOCK_CLAIMS } from './data/samples.js?v=24';
-import { initLogin } from './components/login.js?v=24';
-import { initDashboard } from './components/dashboard.js?v=24';
-import { initScanner } from './components/scanner.js?v=24';
-import { initClaimForm } from './components/claimForm.js?v=24';
-import { initUsers } from './components/users.js?v=24';
+import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=25';
+import { MOCK_CLAIMS } from './data/samples.js?v=25';
+import { initLogin } from './components/login.js?v=25';
+import { initDashboard } from './components/dashboard.js?v=25';
+import { initScanner } from './components/scanner.js?v=25';
+import { initClaimForm } from './components/claimForm.js?v=25';
+import { initUsers } from './components/users.js?v=25';
 
 // Application State
 let state = {
@@ -55,6 +55,21 @@ function mapClaimToDb(claim) {
     applicant_name: claim.applicantName,
     legs: claim.legs
   };
+}
+
+function upsertClaimInState(claim) {
+  const nextClaim = {
+    ...claim,
+    userId: claim.userId || state.currentUser?.id || null,
+    createdAt: claim.createdAt || new Date().toISOString()
+  };
+  const existingIndex = state.claims.findIndex(c => c.id === nextClaim.id);
+
+  if (existingIndex === -1) {
+    state.claims = [...state.claims, nextClaim];
+  } else {
+    state.claims = state.claims.map(c => c.id === nextClaim.id ? { ...c, ...nextClaim } : c);
+  }
 }
 
 function getClaimStatusMeta(status) {
@@ -446,9 +461,11 @@ async function handleSaveClaim(savedClaim) {
       });
     }
     
+    upsertClaimInState(savedClaim);
     showToast(savedClaim.status === 'draft' ? '下書きを保存しました' : '申請しました', 'success');
     state.activeClaim = null;
     switchView('dashboard');
+    apiFetchClaims();
   } catch (err) {
     console.error("Save failed:", err);
     showToast(`保存に失敗しました: ${err.message}`, 'danger');
