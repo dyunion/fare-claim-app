@@ -1,12 +1,12 @@
 // SmartFare Application Main Orchestrator
 
-import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=21';
-import { MOCK_CLAIMS } from './data/samples.js?v=21';
-import { initLogin } from './components/login.js?v=21';
-import { initDashboard } from './components/dashboard.js?v=21';
-import { initScanner } from './components/scanner.js?v=21';
-import { initClaimForm } from './components/claimForm.js?v=21';
-import { initUsers } from './components/users.js?v=21';
+import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=22';
+import { MOCK_CLAIMS } from './data/samples.js?v=22';
+import { initLogin } from './components/login.js?v=22';
+import { initDashboard } from './components/dashboard.js?v=22';
+import { initScanner } from './components/scanner.js?v=22';
+import { initClaimForm } from './components/claimForm.js?v=22';
+import { initUsers } from './components/users.js?v=22';
 
 // Application State
 let state = {
@@ -446,6 +446,8 @@ async function handleSaveClaim(savedClaim) {
     switchView('dashboard');
   } catch (err) {
     console.error("Save failed:", err);
+    showToast(`保存に失敗しました: ${err.message}`, 'danger');
+    throw err;
   }
 }
 

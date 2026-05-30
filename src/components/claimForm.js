@@ -124,6 +124,7 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
               ${isApproved ? '変更を保存' : '申請する'}
             </button>
           </div>
+          <div id="claim-submit-status" style="display: none; margin-top: 10px; font-size: 12px; color: var(--text-secondary); text-align: right;"></div>
         </form>
       </div>
     `;
@@ -505,7 +506,7 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
     });
   }
 
-  function handleFormSubmit(targetStatus = 'pending', shouldValidateForSubmit = true) {
+  async function handleFormSubmit(targetStatus = 'pending', shouldValidateForSubmit = true) {
     // Validate inputs
     const dateInput = document.getElementById('claim-date').value;
     const titleInput = document.getElementById('claim-title').value; // Holds 目的、詳細
@@ -566,7 +567,38 @@ export function initClaimForm(containerId, initialData, onSave, onCancel, showTo
       legs: formData.legs
     };
 
-    onSave(savedData);
+    const actionLabel = targetStatus === 'draft' ? '下書きを保存中...' : '申請中...';
+    setSubmissionState(true, actionLabel);
+
+    try {
+      await onSave(savedData);
+    } catch (err) {
+      setSubmissionState(false);
+    }
+  }
+
+  function setSubmissionState(isSubmitting, message = '') {
+    const saveBtn = document.getElementById('save-claim-btn');
+    const draftBtn = document.getElementById('draft-claim-btn');
+    const statusEl = document.getElementById('claim-submit-status');
+
+    if (saveBtn) {
+      saveBtn.disabled = isSubmitting;
+      saveBtn.style.opacity = isSubmitting ? '0.75' : '';
+      saveBtn.textContent = isSubmitting
+        ? message
+        : formData.status === 'approved' ? '変更を保存' : '申請する';
+    }
+
+    if (draftBtn) {
+      draftBtn.disabled = isSubmitting;
+      draftBtn.style.opacity = isSubmitting ? '0.75' : '';
+    }
+
+    if (statusEl) {
+      statusEl.style.display = isSubmitting ? 'block' : 'none';
+      statusEl.textContent = message;
+    }
   }
 }
 
