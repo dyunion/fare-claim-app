@@ -1,6 +1,5 @@
 // SmartFare OCR Scanner Component
 
-import { MOCK_OCR_SAMPLES } from '../data/samples.js';
 import { EDGE_FUNCTIONS, SUPABASE_CONFIG } from '../config.js';
 
 export function initScanner(containerId, onScanComplete, showToast) {
@@ -10,7 +9,7 @@ export function initScanner(containerId, onScanComplete, showToast) {
   // Render initial layout
   container.innerHTML = `
     <div class="claim-container">
-      <!-- Left side: Upload area & samples -->
+      <!-- Left side: Upload area -->
       <div class="scanner-card glass-card">
         <div class="form-header">
           <h3>スクリーンショット自動読込</h3>
@@ -30,19 +29,6 @@ export function initScanner(containerId, onScanComplete, showToast) {
             <p>またはファイルを選択 (PNG, JPG, PDF)</p>
           </div>
           <input type="file" id="scanner-file-input" style="display: none;" accept="image/*,application/pdf">
-        </div>
-
-        <!-- Samples -->
-        <div class="samples-section">
-          <h4>サンプル画像でテストする</h4>
-          <div class="samples-grid">
-            ${MOCK_OCR_SAMPLES.map(sample => `
-              <button class="sample-btn" data-id="${sample.id}">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                ${sample.name}
-              </button>
-            `).join('')}
-          </div>
         </div>
 
         <!-- Skip / Manual Entry option -->
@@ -68,7 +54,7 @@ export function initScanner(containerId, onScanComplete, showToast) {
         <div class="scanner-preview-wrapper" id="preview-wrapper">
           <div id="scanner-placeholder" class="text-secondary" style="text-align: center; padding: 20px;">
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-muted" style="margin-bottom: 12px; opacity: 0.5;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <p style="font-size: 13px;">左側から画像またはPDFをアップロードするか、サンプルを選択してください</p>
+            <p style="font-size: 13px;">左側から画像またはPDFをアップロードしてください</p>
           </div>
           
           <img id="preview-image" class="scanner-preview-img" style="display: none;" alt="Scan Preview">
@@ -111,18 +97,6 @@ export function initScanner(containerId, onScanComplete, showToast) {
     });
   }
 
-  // Register Sample Click Handlers
-  const sampleBtns = container.querySelectorAll('.sample-btn');
-  sampleBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const sampleId = btn.getAttribute('data-id');
-      const sample = MOCK_OCR_SAMPLES.find(s => s.id === sampleId);
-      if (sample) {
-        startScanning(sample);
-      }
-    });
-  });
-
   // Drag and Drop Listeners
   dropzone.addEventListener('click', () => fileInput.click());
   
@@ -162,21 +136,14 @@ export function initScanner(containerId, onScanComplete, showToast) {
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      // Create user sample structure
-      const randomSample = MOCK_OCR_SAMPLES[Math.floor(Math.random() * MOCK_OCR_SAMPLES.length)];
-      const userSample = {
-        ...randomSample,
+      const upload = {
         id: 'user-uploaded',
         name: file.name,
         mimeType: file.type,
         isPdf: isPdf,
-        imgUrl: event.target.result, // Use actual user image or pdf data url
-        parsedData: {
-          ...randomSample.parsedData,
-          title: `スキャン: ${file.name.replace(/\.[^/.]+$/, "")}`
-        }
+        imgUrl: event.target.result
       };
-      startScanning(userSample);
+      startScanning(upload);
     };
     reader.readAsDataURL(file);
   }
@@ -278,21 +245,12 @@ export function initScanner(containerId, onScanComplete, showToast) {
         
         showToast(`AI解析エラー: ${err.message}`, 'danger');
         
-        writeLog('<div style="margin-top: 8px;"><button id="btn-fallback-demo" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; cursor: pointer; border-color: rgba(255,255,255,0.15);">デモデータで続行する</button></div>');
-        
-        setTimeout(() => {
-          const fallbackBtn = document.getElementById('btn-fallback-demo');
-          if (fallbackBtn) {
-            fallbackBtn.addEventListener('click', () => {
-              writeLog('[INFO] デモモード（シミュレーション）を開始します...');
-              runSimulatedScan(sample);
-            });
-          }
-        }, 100);
       }
     } else {
-      // Normal simulated scan for mock samples or fallback
-      runSimulatedScan(sample);
+      laserLine.style.display = 'none';
+      scanBadge.className = 'badge badge-pending';
+      scanBadge.textContent = '設定未完了';
+      showToast('AI解析の本番接続が設定されていません', 'danger');
     }
   }
 
@@ -330,62 +288,6 @@ export function initScanner(containerId, onScanComplete, showToast) {
 
   function isSupabaseJwt(token) {
     return typeof token === 'string' && token.split('.').length === 3;
-  }
-
-  function runSimulatedScan(sample) {
-    laserLine.style.display = 'block';
-    
-    // Log items with timers
-    addLog('[OCR] 画像のノイズ除去とコントラスト調整を実施中...', 400);
-    addLog('[OCR] 文字領域（テキストブロック）の検出を開始しました...', 800);
-    
-    // Render OCR bounding boxes after delay
-    sample.ocrBoxes.forEach(box => {
-      setTimeout(() => {
-        const div = document.createElement('div');
-        div.className = `ocr-highlight ${box.isCyan ? 'cyan-highlight' : ''}`;
-        div.style.top = box.top;
-        div.style.left = box.left;
-        div.style.width = box.width;
-        div.style.height = box.height;
-        ocrContainer.appendChild(div);
-        
-        // Force reflow and fade in
-        setTimeout(() => div.classList.add('detected'), 50);
-        
-        addLog(`[OCR] テキスト抽出成功: "${box.text}"`, 0);
-      }, box.delay);
-    });
-    
-    // Parse logistics
-    const totalDuration = Math.max(...sample.ocrBoxes.map(b => b.delay)) + 600;
-    
-    addLog('[ANALYZER] AIセマンティック解析による路線・料金の紐付け中...', totalDuration - 500);
-    addLog('[ANALYZER] 交通費精算用のルート構造データ生成中...', totalDuration - 200);
-
-    setTimeout(() => {
-      // Done scanning
-      laserLine.style.display = 'none';
-      scanBadge.className = 'badge badge-approved';
-      scanBadge.textContent = '解析完了';
-      
-      addLog('<span style="color: var(--accent-emerald);">[SUCCESS] すべての路線の読み取りに成功しました！</span>', 0);
-      
-      showToast('スクリーンショットの解析が完了しました！', 'success');
-      
-      // Delay transitioning to form for UI satisfaction
-      setTimeout(() => {
-        onScanComplete(sample.parsedData);
-      }, 1000);
-    }, totalDuration);
-  }
-
-  function addLog(message, delay) {
-    if (delay > 0) {
-      setTimeout(() => writeLog(message), delay);
-    } else {
-      writeLog(message);
-    }
   }
 
   function writeLog(message) {

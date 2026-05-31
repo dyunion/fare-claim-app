@@ -1,12 +1,8 @@
 // SmartFare Application Main Orchestrator
 
-import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=29';
-import { MOCK_CLAIMS } from './data/samples.js?v=29';
-import { initLogin } from './components/login.js?v=29';
-import { initDashboard } from './components/dashboard.js?v=29';
-import { initScanner } from './components/scanner.js?v=29';
-import { initClaimForm } from './components/claimForm.js?v=29';
-import { initUsers } from './components/users.js?v=29';
+import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=30';
+import { initLogin } from './components/login.js?v=30';
+import { initDashboard } from './components/dashboard.js?v=30';
 
 // Application State
 let state = {
@@ -24,6 +20,21 @@ let state = {
 };
 let sessionVersion = 0;
 const CLAIMS_CACHE_PREFIX = 'smartfare_claims_cache_v1_';
+const viewModules = {};
+
+async function loadViewModule(name) {
+  if (!viewModules[name]) {
+    if (name === 'scanner') {
+      viewModules[name] = import('./components/scanner.js?v=30');
+    } else if (name === 'claimForm') {
+      viewModules[name] = import('./components/claimForm.js?v=30');
+    } else if (name === 'users') {
+      viewModules[name] = import('./components/users.js?v=30');
+    }
+  }
+
+  return viewModules[name];
+}
 
 // Check if we are in local offline/demo mock mode
 function isMock() {
@@ -321,9 +332,9 @@ async function apiFetchClaims(requestSessionVersion = sessionVersion) {
     if (requestSessionVersion !== sessionVersion || !state.currentUser) {
       return;
     }
-    // Load from localStorage or default MOCK_CLAIMS
     let localClaims = localStorage.getItem('smartfare_mock_claims');
     if (!localClaims) {
+      const { MOCK_CLAIMS } = await import('./data/samples.js?v=30');
       localStorage.setItem('smartfare_mock_claims', JSON.stringify(MOCK_CLAIMS));
       state.claims = JSON.parse(JSON.stringify(MOCK_CLAIMS));
     } else {
@@ -447,17 +458,18 @@ function switchView(viewName) {
 }
 
 // Render dynamic containers
-function renderActiveView() {
+async function renderActiveView() {
   if (!state.currentUser) return;
 
   const wrapperId = 'view-container';
   const container = document.getElementById(wrapperId);
   if (!container) return;
 
+  const renderView = state.currentView;
   // Clear previous listeners by clearing HTML
   container.innerHTML = '';
 
-  if (state.currentView === 'dashboard') {
+  if (renderView === 'dashboard') {
     initDashboard(
       wrapperId,
       state.claims,
@@ -468,7 +480,9 @@ function renderActiveView() {
       (id) => handleViewClaimReceipts(id),
       state.currentUser.role === 'admin'
     );
-  } else if (state.currentView === 'new-claim') {
+  } else if (renderView === 'new-claim') {
+    const { initScanner } = await loadViewModule('scanner');
+    if (state.currentView !== renderView || !state.currentUser) return;
     initScanner(
       wrapperId,
       (ocrData) => {
@@ -480,7 +494,9 @@ function renderActiveView() {
       },
       showToast
     );
-  } else if (state.currentView === 'edit-claim') {
+  } else if (renderView === 'edit-claim') {
+    const { initClaimForm } = await loadViewModule('claimForm');
+    if (state.currentView !== renderView || !state.currentUser) return;
     // If regular user editing / creating, lock the name field
     const editorClaim = state.activeClaim ? { ...state.activeClaim } : {};
     
@@ -498,9 +514,9 @@ function renderActiveView() {
       showToast,
       state.fuelSettings
     );
-  } else if (state.currentView === 'history') {
+  } else if (renderView === 'history') {
     renderHistoryView(wrapperId);
-  } else if (state.currentView === 'users') {
+  } else if (renderView === 'users') {
     renderUsersView(wrapperId);
   }
 }
@@ -654,6 +670,9 @@ async function renderUsersView(wrapperId) {
     switchView('dashboard');
     return;
   }
+
+  const { initUsers } = await loadViewModule('users');
+  if (state.currentView !== 'users' || !state.currentUser) return;
 
   if (isMock()) {
     const defaultMockUsers = [
