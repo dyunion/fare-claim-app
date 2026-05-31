@@ -19,6 +19,33 @@ function getClaimStatusMeta(status) {
   return { label: '承認待ち', badgeClass: 'badge-pending' };
 }
 
+function buildRecentMonthlyData(claims) {
+  const today = new Date();
+  const months = [];
+
+  for (let offset = 5; offset >= 0; offset -= 1) {
+    const date = new Date(today.getFullYear(), today.getMonth() - offset, 1);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    months.push({
+      key,
+      month: `${date.getMonth() + 1}月`,
+      amount: 0
+    });
+  }
+
+  const monthMap = Object.fromEntries(months.map(item => [item.key, item]));
+
+  claims.forEach(claim => {
+    if (!claim.date) return;
+    const key = String(claim.date).slice(0, 7);
+    if (monthMap[key]) {
+      monthMap[key].amount += Number(claim.amount) || 0;
+    }
+  });
+
+  return months;
+}
+
 export function initDashboard(containerId, claims, onViewChange, onEditClaim, onApproveClaim, showToast, onViewReceipt, isAdmin) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -36,18 +63,8 @@ export function initDashboard(containerId, claims, onViewChange, onEditClaim, on
     categoryBreakdown[c.category] = (categoryBreakdown[c.category] || 0) + c.amount;
   });
 
-  // Calculate monthly stats for SVG chart (mock months based on current time)
-  // Let's create data for: 12月, 1月, 2月, 3月, 4月, 5月
-  const monthlyData = [
-    { month: '12月', amount: 18900 },
-    { month: '1月', amount: 32400 },
-    { month: '2月', amount: 15600 },
-    { month: '3月', amount: 48900 },
-    { month: '4月', amount: 22000 },
-    { month: '5月', amount: totalAmount } // Current month is sum of claims
-  ];
-
-  const maxMonthlyAmount = Math.max(...monthlyData.map(d => d.amount), 50000);
+  const monthlyData = buildRecentMonthlyData(submittedClaims);
+  const maxMonthlyAmount = Math.max(...monthlyData.map(d => d.amount), 1);
 
   // Render Layout
   container.innerHTML = `
@@ -101,7 +118,7 @@ export function initDashboard(containerId, claims, onViewChange, onEditClaim, on
         <h3>📊 月別精算推移 <span style="font-size:11px; font-weight:normal; color:var(--text-muted);">（過去6ヶ月）</span></h3>
         <div class="chart-container">
           ${monthlyData.map(data => {
-            const percentage = (data.amount / maxMonthlyAmount) * 100;
+            const percentage = data.amount > 0 ? Math.max((data.amount / maxMonthlyAmount) * 100, 4) : 0;
             return `
               <div class="chart-bar-group">
                 <div class="chart-bar-outer">
@@ -115,7 +132,7 @@ export function initDashboard(containerId, claims, onViewChange, onEditClaim, on
         <div class="chart-legend">
           <div class="legend-item">
             <span class="legend-color" style="background: linear-gradient(to top, var(--accent-purple), var(--accent-cyan));"></span>
-            <span>精算額（円）</span>
+            <span>精算額（下書きを除く）</span>
           </div>
         </div>
       </div>
