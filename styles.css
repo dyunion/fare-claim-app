@@ -1430,14 +1430,103 @@ body {
     flex-direction: column-reverse;
   }
 
+  .claim-table-wrapper {
+    overflow: visible;
+  }
+
   .claim-table {
-    min-width: 620px;
+    display: block;
+    min-width: 0;
+  }
+
+  .claim-table thead {
+    display: none;
+  }
+
+  .claim-table tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .claim-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.025);
+  }
+
+  .claim-table tbody tr:not([data-id]) {
+    display: block;
   }
 
   .claim-table th,
   .claim-table td {
-    padding: 10px 12px;
+    border-bottom: none;
     font-size: 12px;
+  }
+
+  .claim-table td {
+    display: flex;
+    min-width: 0;
+    min-height: 54px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.025);
+    overflow-wrap: anywhere;
+    word-break: keep-all;
+  }
+
+  .claim-table td::before {
+    content: attr(data-label);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0;
+  }
+
+  .claim-table td.mobile-span-2,
+  .claim-table td.mobile-actions-cell {
+    grid-column: 1 / -1;
+  }
+
+  .claim-table td.mobile-span-2 {
+    min-height: 64px;
+  }
+
+  .claim-table td.mobile-actions-cell {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left !important;
+  }
+
+  .claim-table td.mobile-actions-cell::before {
+    margin-right: auto;
+  }
+
+  .claim-table td[title],
+  .claim-table td[style*="white-space: nowrap"] {
+    max-width: none !important;
+    white-space: normal !important;
+    text-overflow: clip !important;
+  }
+
+  @media (min-width: 560px) {
+    .claim-table tbody tr {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .claim-table td.mobile-span-2,
+    .claim-table td.mobile-actions-cell {
+      grid-column: span 3;
+    }
   }
 
   .toast-container {

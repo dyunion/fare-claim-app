@@ -1,12 +1,12 @@
 // SmartFare Application Main Orchestrator
 
-import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=26';
-import { MOCK_CLAIMS } from './data/samples.js?v=26';
-import { initLogin } from './components/login.js?v=26';
-import { initDashboard } from './components/dashboard.js?v=26';
-import { initScanner } from './components/scanner.js?v=26';
-import { initClaimForm } from './components/claimForm.js?v=26';
-import { initUsers } from './components/users.js?v=26';
+import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=27';
+import { MOCK_CLAIMS } from './data/samples.js?v=27';
+import { initLogin } from './components/login.js?v=27';
+import { initDashboard } from './components/dashboard.js?v=27';
+import { initScanner } from './components/scanner.js?v=27';
+import { initClaimForm } from './components/claimForm.js?v=27';
+import { initUsers } from './components/users.js?v=27';
 
 // Application State
 let state = {
@@ -822,32 +822,32 @@ function renderHistoryView(wrapperId) {
 
       return `
         <tr data-id="${claim.id}">
-          <td style="font-family: monospace; font-weight: 500;">${dateStr}</td>
-          <td style="font-weight: 500; color: var(--text-primary);">${claim.applicantName || ''}</td>
-          <td style="font-weight: 600;">
+          <td data-label="利用日" style="font-family: monospace; font-weight: 500;">${dateStr}</td>
+          <td data-label="申請者" style="font-weight: 500; color: var(--text-primary);">${claim.applicantName || ''}</td>
+          <td data-label="目的・詳細" class="mobile-span-2" style="font-weight: 600;">
             <div>${claim.title}</div>
           </td>
-          <td>
+          <td data-label="交通区分">
             <span class="transit-type-tag ${claim.category}">
               ${categoryLabel}
             </span>
           </td>
-          <td style="font-size: 13px; color: var(--text-secondary); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${legsText}">
+          <td data-label="経路・区間" class="mobile-span-2" style="font-size: 13px; color: var(--text-secondary); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${legsText}">
             ${legsText}
           </td>
-          <td>
+          <td data-label="領収書">
             ${(() => {
               const count = claim.legs.filter(l => l.receiptImage).length;
               return count > 0 ? `<span class="badge badge-approved view-receipt-badge" style="cursor: pointer; font-size: 10px;" data-id="${claim.id}">📄 ${count}枚</span>` : `<span style="font-size: 11px; color: var(--text-muted);">なし</span>`;
             })()}
           </td>
-          <td style="font-family: monospace; font-weight: 700; color: var(--accent-cyan);">¥ ${claim.amount.toLocaleString()}</td>
-          <td>
+          <td data-label="合計金額" style="font-family: monospace; font-weight: 700; color: var(--accent-cyan);">¥ ${claim.amount.toLocaleString()}</td>
+          <td data-label="ステータス">
             <span class="badge ${statusMeta.badgeClass}">
               ${statusMeta.label}
             </span>
           </td>
-          <td style="text-align: right; white-space: nowrap;">
+          <td data-label="操作" class="mobile-actions-cell" style="text-align: right; white-space: nowrap;">
             ${(claim.status === 'pending' && isAdmin) ? `
               <button class="btn btn-secondary btn-icon-only approve-btn" title="承認" style="margin-right: 6px; border-color: rgba(16, 185, 129, 0.2); color: var(--accent-emerald);">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>

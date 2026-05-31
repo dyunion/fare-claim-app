@@ -184,32 +184,32 @@ export function initDashboard(containerId, claims, onViewChange, onEditClaim, on
             const statusMeta = getClaimStatusMeta(claim.status);
             return `
               <tr data-id="${claim.id}">
-                <td style="font-family: monospace; font-weight: 500;">${dateStr}</td>
-                <td style="font-weight: 600;">
+                <td data-label="利用日" style="font-family: monospace; font-weight: 500;">${dateStr}</td>
+                <td data-label="目的・詳細" class="mobile-span-2" style="font-weight: 600;">
                   <div>${claim.title}</div>
                   <div style="font-size: 11px; color: var(--text-muted); font-weight: normal; margin-top: 2px;">申請者: ${claim.applicantName || 'Y Rai'}</div>
                 </td>
-                <td>
+                <td data-label="交通区分">
                   <span class="transit-type-tag ${claim.category}">
                     ${getTransitTagEmoji(claim.category)} ${TRANSIT_METRIC_CONFIG[claim.category]?.label || claim.category}
                   </span>
                 </td>
-                <td style="font-size: 12px; color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                <td data-label="経路・区間" class="mobile-span-2" style="font-size: 12px; color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                   ${legsText}
                 </td>
-                <td>
+                <td data-label="領収書">
                   ${(() => {
                     const count = claim.legs.filter(l => l.receiptImage).length;
                     return count > 0 ? `<span class="badge badge-approved view-receipt-badge" style="cursor: pointer; font-size: 10px;" data-id="${claim.id}">📄 ${count}枚</span>` : `<span style="font-size: 11px; color: var(--text-muted);">なし</span>`;
                   })()}
                 </td>
-                <td style="font-family: monospace; font-weight: 700; color: var(--accent-cyan);">¥ ${claim.amount.toLocaleString()}</td>
-                <td>
+                <td data-label="金額" style="font-family: monospace; font-weight: 700; color: var(--accent-cyan);">¥ ${claim.amount.toLocaleString()}</td>
+                <td data-label="ステータス">
                   <span class="badge ${statusMeta.badgeClass}">
                     ${statusMeta.label}
                   </span>
                 </td>
-                <td style="text-align: right; white-space: nowrap;">
+                <td data-label="操作" class="mobile-actions-cell" style="text-align: right; white-space: nowrap;">
                   ${(claim.status === 'pending' && isAdmin) ? `
                     <button class="btn btn-secondary btn-icon-only approve-btn" title="スピード承認" style="margin-right: 6px; border-color: rgba(16, 185, 129, 0.2); color: var(--accent-emerald);">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
