@@ -1,12 +1,12 @@
 // SmartFare Application Main Orchestrator
 
-import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=28';
-import { MOCK_CLAIMS } from './data/samples.js?v=28';
-import { initLogin } from './components/login.js?v=28';
-import { initDashboard } from './components/dashboard.js?v=28';
-import { initScanner } from './components/scanner.js?v=28';
-import { initClaimForm } from './components/claimForm.js?v=28';
-import { initUsers } from './components/users.js?v=28';
+import { SUPABASE_CONFIG, EDGE_FUNCTIONS } from './config.js?v=29';
+import { MOCK_CLAIMS } from './data/samples.js?v=29';
+import { initLogin } from './components/login.js?v=29';
+import { initDashboard } from './components/dashboard.js?v=29';
+import { initScanner } from './components/scanner.js?v=29';
+import { initClaimForm } from './components/claimForm.js?v=29';
+import { initUsers } from './components/users.js?v=29';
 
 // Application State
 let state = {
@@ -23,6 +23,7 @@ let state = {
   }
 };
 let sessionVersion = 0;
+const CLAIMS_CACHE_PREFIX = 'smartfare_claims_cache_v1_';
 
 // Check if we are in local offline/demo mock mode
 function isMock() {
@@ -31,6 +32,9 @@ function isMock() {
 
 // Map DB models to application camelCase properties and vice versa
 function mapClaimFromDb(dbClaim) {
+  const legs = Array.isArray(dbClaim.legs) ? dbClaim.legs : [];
+  const isSummary = Object.prototype.hasOwnProperty.call(dbClaim, 'receipt_count');
+
   return {
     id: dbClaim.id,
     date: dbClaim.date,
@@ -39,9 +43,11 @@ function mapClaimFromDb(dbClaim) {
     amount: dbClaim.amount,
     status: dbClaim.status,
     applicantName: dbClaim.applicant_name,
-    legs: dbClaim.legs,
+    legs,
     userId: dbClaim.user_id,
-    createdAt: dbClaim.created_at
+    createdAt: dbClaim.created_at,
+    receiptCount: isSummary ? Number(dbClaim.receipt_count) || 0 : countReceiptImages(legs),
+    hasFullDetails: !isSummary
   };
 }
 
@@ -58,11 +64,73 @@ function mapClaimToDb(claim) {
   };
 }
 
+function countReceiptImages(legs = []) {
+  return legs.filter(leg => leg.receiptImage).length;
+}
+
+function stripReceiptImagesFromLegs(legs = []) {
+  return legs.map(leg => {
+    const { receiptImage, ...rest } = leg;
+    return {
+      ...rest,
+      hasReceipt: Boolean(receiptImage || leg.hasReceipt)
+    };
+  });
+}
+
+function getReceiptCount(claim) {
+  if (!claim) return 0;
+  return Number.isFinite(claim.receiptCount) ? claim.receiptCount : countReceiptImages(claim.legs || []);
+}
+
+function getClaimsCacheKey() {
+  return state.currentUser?.id ? `${CLAIMS_CACHE_PREFIX}${state.currentUser.id}` : null;
+}
+
+function claimForCache(claim) {
+  return {
+    ...claim,
+    legs: stripReceiptImagesFromLegs(claim.legs || []),
+    receiptCount: getReceiptCount(claim),
+    hasFullDetails: false
+  };
+}
+
+function loadCachedClaims() {
+  const cacheKey = getClaimsCacheKey();
+  if (!cacheKey) return false;
+
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (!cached) return false;
+    const claims = JSON.parse(cached);
+    if (!Array.isArray(claims)) return false;
+    state.claims = claims;
+    return true;
+  } catch (err) {
+    console.error('Claims cache loading failed:', err);
+    return false;
+  }
+}
+
+function saveClaimsCache() {
+  const cacheKey = getClaimsCacheKey();
+  if (!cacheKey) return;
+
+  try {
+    localStorage.setItem(cacheKey, JSON.stringify(state.claims.map(claimForCache)));
+  } catch (err) {
+    console.error('Claims cache saving failed:', err);
+  }
+}
+
 function upsertClaimInState(claim) {
   const nextClaim = {
     ...claim,
     userId: claim.userId || state.currentUser?.id || null,
-    createdAt: claim.createdAt || new Date().toISOString()
+    createdAt: claim.createdAt || new Date().toISOString(),
+    receiptCount: getReceiptCount(claim),
+    hasFullDetails: claim.hasFullDetails !== false
   };
   const existingIndex = state.claims.findIndex(c => c.id === nextClaim.id);
 
@@ -125,6 +193,7 @@ function checkSession() {
       state.currentView = 'dashboard';
     }
 
+    loadCachedClaims();
     switchView(state.currentView);
     
     // Load settings and claims in parallel. Ignore stale responses after logout/login switch.
@@ -200,15 +269,16 @@ async function apiFetch(path, options = {}) {
   const url = path.startsWith('http') ? path : `${SUPABASE_CONFIG.URL}${path}`;
   const requestToken = state.token;
   const requestSessionVersion = sessionVersion;
+  const { silent, ...fetchOptions } = options;
   
-  const headers = options.headers ? { ...options.headers } : {};
+  const headers = fetchOptions.headers ? { ...fetchOptions.headers } : {};
   headers['apikey'] = SUPABASE_CONFIG.ANON_KEY;
   if (requestToken) {
     headers['Authorization'] = `Bearer ${requestToken}`;
   }
   
   const mergedOptions = {
-    ...options,
+    ...fetchOptions,
     headers
   };
 
@@ -239,7 +309,7 @@ async function apiFetch(path, options = {}) {
 
     return JSON.parse(responseText);
   } catch (err) {
-    if (requestSessionVersion === sessionVersion) {
+    if (!silent && requestSessionVersion === sessionVersion) {
       showToast(err.message, 'danger');
     }
     throw err;
@@ -264,15 +334,38 @@ async function apiFetchClaims(requestSessionVersion = sessionVersion) {
   }
 
   try {
-    const dbClaims = await apiFetch('/rest/v1/claims?select=*&order=created_at.desc');
+    let dbClaims;
+    try {
+      dbClaims = await apiFetch('/rest/v1/rpc/list_claim_summaries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+        silent: true
+      });
+    } catch (_summaryErr) {
+      dbClaims = await apiFetch('/rest/v1/claims?select=*&order=created_at.desc');
+    }
+
     if (requestSessionVersion !== sessionVersion || !state.currentUser) {
       return;
     }
     state.claims = dbClaims.map(mapClaimFromDb);
+    saveClaimsCache();
     renderActiveView();
   } catch (err) {
     console.error("Claims loading failed:", err);
   }
+}
+
+async function apiFetchClaimDetail(id) {
+  const rows = await apiFetch(`/rest/v1/claims?select=*&id=eq.${encodeURIComponent(id)}&limit=1`);
+  const claim = rows?.[0] ? mapClaimFromDb(rows[0]) : null;
+  if (!claim) {
+    throw new Error('申請データが見つかりませんでした。');
+  }
+  upsertClaimInState(claim);
+  saveClaimsCache();
+  return claim;
 }
 
 // Global Toast System
@@ -372,7 +465,7 @@ function renderActiveView() {
       (id) => handleEditClaim(id),
       (id) => handleApproveClaim(id),
       showToast,
-      (imgSrc, title) => showReceiptModal(imgSrc, title),
+      (id) => handleViewClaimReceipts(id),
       state.currentUser.role === 'admin'
     );
   } else if (state.currentView === 'new-claim') {
@@ -413,11 +506,37 @@ function renderActiveView() {
 }
 
 // Handle Operations
-function handleEditClaim(id) {
-  const claim = state.claims.find(c => c.id === id);
-  if (claim) {
+async function handleEditClaim(id) {
+  let claim = state.claims.find(c => c.id === id);
+  if (!claim) return;
+
+  try {
+    if (claim.hasFullDetails === false) {
+      claim = await apiFetchClaimDetail(id);
+    }
     state.activeClaim = claim;
     switchView('edit-claim');
+  } catch (err) {
+    console.error("Claim detail loading failed:", err);
+  }
+}
+
+async function handleViewClaimReceipts(id) {
+  let claim = state.claims.find(c => c.id === id);
+  if (!claim) return;
+
+  try {
+    if (claim.hasFullDetails === false) {
+      claim = await apiFetchClaimDetail(id);
+    }
+    const receiptLegs = (claim.legs || []).filter(leg => leg.receiptImage);
+    if (receiptLegs.length > 0) {
+      showReceiptModal(receiptLegs, claim.title);
+    } else {
+      showToast('表示できる領収書がありません', 'info');
+    }
+  } catch (err) {
+    console.error("Receipt loading failed:", err);
   }
 }
 
@@ -462,6 +581,7 @@ async function handleSaveClaim(savedClaim) {
       }
       localStorage.setItem('smartfare_mock_claims', JSON.stringify(state.claims));
       showToast(savedClaim.status === 'draft' ? '【デモ】下書きを保存しました' : '【デモ】申請しました', 'success');
+      saveClaimsCache();
       state.activeClaim = null;
       switchView('dashboard');
       return;
@@ -494,6 +614,7 @@ async function handleSaveClaim(savedClaim) {
     }
     
     upsertClaimInState(savedClaim);
+    saveClaimsCache();
     showToast(savedClaim.status === 'draft' ? '下書きを保存しました' : '申請しました', 'success');
     state.activeClaim = null;
     switchView('dashboard');
@@ -837,7 +958,7 @@ function renderHistoryView(wrapperId) {
           </td>
           <td data-label="領収書">
             ${(() => {
-              const count = claim.legs.filter(l => l.receiptImage).length;
+              const count = getReceiptCount(claim);
               return count > 0 ? `<span class="badge badge-approved view-receipt-badge" style="cursor: pointer; font-size: 10px;" data-id="${claim.id}">📄 ${count}枚</span>` : `<span style="font-size: 11px; color: var(--text-muted);">なし</span>`;
             })()}
           </td>
@@ -880,15 +1001,7 @@ function renderHistoryView(wrapperId) {
 
       const receiptBadge = row.querySelector('.view-receipt-badge');
       if (receiptBadge) {
-        receiptBadge.addEventListener('click', () => {
-          const claim = filteredClaims.find(c => c.id === id);
-          if (claim) {
-            const receiptLegs = claim.legs.filter(l => l.receiptImage);
-            if (receiptLegs.length > 0) {
-              showReceiptModal(receiptLegs, claim.title);
-            }
-          }
-        });
+        receiptBadge.addEventListener('click', () => handleViewClaimReceipts(id));
       }
     });
   }
@@ -911,7 +1024,7 @@ function renderHistoryView(wrapperId) {
       claim.legs.forEach(leg => {
         const cleanTitle = claim.title.replace(/"/g, '""');
         const cleanRemark = (leg.remark || '').replace(/"/g, '""');
-        const receiptAttached = leg.receiptImage ? 'あり' : 'なし';
+        const receiptAttached = (leg.receiptImage || leg.hasReceipt) ? 'あり' : 'なし';
         csvContent += `"${claim.date}","${claim.applicantName || ''}","${cleanTitle}","${catLabel}",${claim.amount},"${statusLabel}","${receiptAttached}","${leg.from}","${leg.to}",${leg.amount},"${cleanRemark}"\n`;
       });
     });

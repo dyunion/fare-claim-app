@@ -19,6 +19,12 @@ function getClaimStatusMeta(status) {
   return { label: '承認待ち', badgeClass: 'badge-pending' };
 }
 
+function getReceiptCount(claim) {
+  if (!claim) return 0;
+  if (Number.isFinite(claim.receiptCount)) return claim.receiptCount;
+  return (claim.legs || []).filter(leg => leg.receiptImage).length;
+}
+
 function buildRecentMonthlyData(claims) {
   const today = new Date();
   const months = [];
@@ -216,7 +222,7 @@ export function initDashboard(containerId, claims, onViewChange, onEditClaim, on
                 </td>
                 <td data-label="領収書">
                   ${(() => {
-                    const count = claim.legs.filter(l => l.receiptImage).length;
+                    const count = getReceiptCount(claim);
                     return count > 0 ? `<span class="badge badge-approved view-receipt-badge" style="cursor: pointer; font-size: 10px;" data-id="${claim.id}">📄 ${count}枚</span>` : `<span style="font-size: 11px; color: var(--text-muted);">なし</span>`;
                   })()}
                 </td>
@@ -266,15 +272,7 @@ export function initDashboard(containerId, claims, onViewChange, onEditClaim, on
 
     const receiptBadge = row.querySelector('.view-receipt-badge');
     if (receiptBadge) {
-      receiptBadge.addEventListener('click', () => {
-        const claim = claims.find(c => c.id === id);
-        if (claim) {
-          const receiptLegs = claim.legs.filter(l => l.receiptImage);
-          if (receiptLegs.length > 0) {
-            onViewReceipt(receiptLegs, claim.title);
-          }
-        }
-      });
+      receiptBadge.addEventListener('click', () => onViewReceipt(id));
     }
   });
 
